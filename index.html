@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>توليد مجسم ومفاصل برمجياً من صورة</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #1a1a1a; }
+        canvas { width: 100vw; height: 100vh; display: block; }
+    </style>
+</head>
+<body>
+
+<!-- استدعاء مكتبة Three.js ومساعداتها من الويب مباشرة -->
+<script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com",
+      "three/addons/": "https://unpkg.com"
+    }
+  }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// 1. إعداد المشهد، الكاميرا، والإضاءة
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 5, 15);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const light = new THREE.DirectionalLight(0xffffff, 2);
+light.position.set(10, 20, 15);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0x404040));
+
+const controls = new OrbitControls(camera, renderer.domElement);
+
+// 2. قراءة الصورة برمجياً وتحويلها إلى مجسم ومفاصل
+const textureLoader = new THREE.TextureLoader();
+// ضع مسار صورتك هنا (يُفضل صورة ذات تباين عالٍ أو خلفية شفافة)
+textureLoader.load('Alien_X_2.webp', function(texture) {
+    
+    // إنشاء مجسم مستوي وتقسيمه برمجياً (Subdivision) لكي ينثني عند المفاصل
+    const geometry = new THREE.PlaneGeometry(5, 10, 10, 20); 
+    
+    // ربط الصورة كخامة للمجسم وإعطائها عمق (Displacement) بناءً على ألوان الصورة
+    const material = new THREE.MeshStandardMaterial({ 
+        map: texture,
+        displacementMap: texture, // تحويل الأماكن البيضاء في الصورة إلى بروز ثلاثي الأبعاد
+        displacementScale: 1.5,   // نسبة بروز المجسم
+        side: THREE.DoubleSide,
+        wireframe: false          // غيرها إلى true لرؤية الهيكل الهندسي للمجسم
+    });
+
+    // 3. بناء الهيكل العظمي والمفاصل برمجياً (Bones & Skeleton)
+    const bones = [];
+    const boneCount = 4; // عدد المفاصل
+    const segmentHeight = 2.5; // المسافة بين كل مفصل
+
+    // إنشاء المفصل الرئيسي (الجذر)
+    let parentBone = new THREE.Bone();
+    parentBone.position.y = -5; 
+    bones.push(parentBone);
+
+    // ربط بقية المفاصل ببعضها بشكل متسلسل
+    for (let i = 1; i < boneCount; i++) {
+        const bone = new THREE.Bone();
+        bone.position.y = segmentHeight;
+        parentBone.add(bone);
+        bones.push(bone);
+        parentBone = bone;
+    }
+
+    const skeleton = new THREE.Skeleton(bones);
+
+    // 4. ربط المفاصل بنقاط المجسم (Skinning Weights)
+    // هنا نخبر الكود بأي مفصل يتحكم في أي جزء من نقاط المجسم
+    const position = geometry.attributes.position;
+    const vertexIndices = [];
+    const vertexWeights = [];
+
+    for (let i = 0; i < position.count; i++) {
+        const y = position.getY(i) + 5; // تحويل الإحداثيات لتتطابق مع أسفل المجسم
+        const boxIndex = Math.floor(y / segmentHeight);
+        const weight = (y % segmentHeight) / segmentHeight;
+
+        // ربط النقطة بأقرب مفصلين لها ليكون التحريك ناعماً
+        vertexIndices.push(boxIndex, boxIndex + 1, 0, 0);
+        vertexWeights.push(1 - weight, weight, 0, 0);
+    }
+
+    geometry.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(vertexIndices, 4));
+    geometry.setAttribute('skinWeight', new THREE.Float32BufferAttribute(vertexWeights, 4));
+
+    // 5. إنشاء المجسم الحركي النهائي وإضافته للمشهد
+    const skinnedMesh = new THREE.SkinnedMesh(geometry, material);
+    skinnedMesh.add(bones[0]); // إضافة جذر العظام للمجسم
+    skinnedMesh.bind(skeleton);
+    scene.add(skinnedMesh);
+
+    // إضافة مساعد مرئي لرؤية المفاصل داخل المتصفح (يمكنك حذفه لاحقاً)
+    const skeletonHelper = new THREE.SkeletonHelper(skinnedMesh);
+    scene.add(skeletonHelper);
+
+    // 6. دالة التحريك البرمجي المستمر
+    const clock = new THREE.Clock();
+    function animate() {
+        requestAnimationFrame(animate);
+
+        const time = clock.getElapsedTime();
+
+        // تحريك المفاصل برمجياً عبر دالة الجيب (Sin) لعمل حركة تمايل شبيهة بالسمكة أو الشجرة
+        for (let i = 1; i < skinnedMesh.skeleton.bones.length; i++) {
+            skinnedMesh.skeleton.bones[i].rotation.z = Math.sin(time * 2) * 0.2;
+        }
+
+        controls.update();
+        renderer.render(scene, camera);
+    }
+    
+    animate();
+});
+
+// إعادة ضبط الحجم عند تغيير أبعاد الشاشة
+window.addEventListener('resize', onWindowResize, false);
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+</script>
+</body>
+</html>
