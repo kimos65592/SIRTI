@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI Face Companion</title>
+    <!-- مكتبة Tailwind CSS للتنسيق البصري -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- مكتبة OneSignal الرسمية للإشعارات -->
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: #011627;
+            /* خلفية متدرجة سينمائية مطابقة للقطة الشاشة تماماً */
+            background: radial-gradient(circle at 50% 40%, #00f0b5 0%, #0096c7 45%, #022045 100%);
+            cursor: pointer;
+            touch-action: none;
+        }
+
+        /* توهج خفيف لملامح الوجه الأبيض المتجاوب */
+        .face-glow {
+            filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.8)) drop-shadow(0 0 24px rgba(255, 255, 255, 0.35));
+        }
+
+        /* توهج كهرومغناطيسي أخضر خفيف يظهر على الملامح فقط أثناء الاستماع الصوتي */
+        .listening-glow {
+            filter: drop-shadow(0 0 15px rgba(57, 255, 20, 0.95)) drop-shadow(0 0 30px rgba(57, 255, 20, 0.5));
+            stroke: #39ff14 !important;
+            fill: #39ff14 !important;
+        }
+
+        /* توهج أحمر نابض أثناء إطلاق المنبهات والتذكيرات */
+        .alarm-glow {
+            filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.95)) drop-shadow(0 0 35px rgba(239, 68, 68, 0.6));
+            stroke: #ef4444 !important;
+            fill: #ef4444 !important;
+        }
+
+        /* انتقال سلس ومطاطي فائق النعومة لجميع ملامح الوجه البصري */
+        .smooth-transition {
+            transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #face-svg {
+            width: 100%;
+            height: 100%;
+            max-width: 300px;
+            max-height: 300px;
+            position: absolute;
+            transform: translate(-50%, -50%);
+            pointer-events: none; /* لتفادي حجب النقرات على الخلفية */
+            will-change: left, top, transform;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @media (min-width: 640px) {
+            #face-svg {
+                max-width: 400px;
+                max-height: 400px;
+            }
+        }
+
+        /* حلقات النبض الكهرومغناطيسية الخلفية لبيان حالة الميكروفون */
+        .status-ring {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            border: 3px solid rgba(57, 255, 20, 0.3);
+            pointer-events: none;
+            opacity: 0;
+            transition: all 0.5s ease;
+            will-change: left, top, width, height, opacity;
+        }
+
+        @keyframes pulse-ring {
+            0% { width: 280px; height: 280px; opacity: 0.6; }
+            100% { width: 520px; height: 520px; opacity: 0; }
+        }
+
+        .active-listening-ring {
+            animation: pulse-ring 1.6s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+    </style>
+</head>
+<body onclick="handleGlobalClick()">
+
+    <!-- حلقات النبض البصرية لبيان حالة الميكروفون تحت الوجه -->
+    <div id="listening-ring-1" class="status-ring"></div>
+    <div id="listening-ring-2" class="status-ring" style="animation-delay: 0.5s;"></div>
+
+    <!-- الوجه الرقمي النقي لـ B-Bot (مطابق تماماً للصور ويتحرك بحرية تامة في الشاشة كلها) -->
+    <svg id="face-svg" viewBox="0 0 400 400" class="smooth-transition">
+        <g id="face-group" class="face-glow smooth-transition" transform="translate(0,0)">
+            
+            <!-- الحواجب الرقمية المرنة فائقة السلاسة -->
+            <path id="brow-left" d="M 120,130 Q 145,125 170,135" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round" class="smooth-transition" />
+            <path id="brow-right" d="M 230,135 Q 255,125 280,130" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round" class="smooth-transition" />
+            
+            <!-- مجموعة العيون المتفاعلة مع الماوس والرمش وتغيير الأشكال ^^ -->
+            <g id="eyes-group" class="smooth-transition">
+                <!-- العين اليسرى (الكبسولة الافتراضية) -->
+                <rect id="eye-left" x="135" y="155" width="24" height="70" rx="12" fill="#ffffff" class="smooth-transition" style="transform-origin: 147px 190px;" />
+                <!-- العين اليمنى (الكبسولة الافتراضية) -->
+                <rect id="eye-right" x="241" y="155" width="24" height="70" rx="12" fill="#ffffff" class="smooth-transition" style="transform-origin: 253px 190px;" />
+
+                <!-- العيون السعيدة المقوسة ^^ المخفية (تنشط وتظهر بناء على التحدث والانفعال) -->
+                <path id="eye-left-happy" d="M 125,190 Q 147,162 169,190" fill="none" stroke="#ffffff" stroke-width="15" stroke-linecap="round" class="smooth-transition opacity-0 pointer-events-none" />
+                <path id="eye-right-happy" d="M 231,190 Q 253,162 275,190" fill="none" stroke="#ffffff" stroke-width="15" stroke-linecap="round" class="smooth-transition opacity-0 pointer-events-none" />
+            </g>
+
+            <!-- الفم التفاعلي (معدل برمجياً ليتحول لصناديق وكؤوس مجوفة متوهجة متزامنة مع نطق الكلمات) -->
+            <path id="mouth" d="M 125,270 Q 200,265 275,270" fill="none" stroke="#ffffff" stroke-width="14" stroke-linecap="round" class="smooth-transition" />
+            
+        </g>
+    </svg>
+
+    <!-- تلميح بسيط يختفي تماماً بمجرد النقر والبدء لتنظيف الشاشة بالكامل كالصورة -->
+    <div id="start-hint" class="absolute bottom-8 inset-x-4 flex justify-center pointer-events-none transition-all duration-700">
+        <div class="bg-black/50 backdrop-blur-md border border-white/10 px-5 py-3 rounded-full text-white text-[11px] font-bold shadow-xl animate-bounce flex items-center gap-2">
+            <i data-lucide="mic" class="w-4 h-4 text-white animate-pulse"></i>
+            <span>انقر على الشاشة في أي مكان وتحدث مع المساعد</span>
+        </div>
+    </div>
+
+    <script>
+        // === المكونات وعناصر الوجه للتحكم الحركي ===
+        const faceSvg = document.getElementById('face-svg');
+        const faceGroup = document.getElementById('face-group');
+        const eyesGroup = document.getElementById('eyes-group');
+        
+        const eyeLeft = document.getElementById('eye-left');
+        const eyeRight = document.getElementById('eye-right');
+        const eyeLeftHappy = document.getElementById('eye-left-happy');
+        const eyeRightHappy = document.getElementById('eye-right-happy');
+
+        const browLeft = document.getElementById('brow-left');
+        const browRight = document.getElementById('brow-right');
+        const mouth = document.getElementById('mouth');
+        
+        const ring1 = document.getElementById('listening-ring-1');
+        const ring2 = document.getElementById('listening-ring-2');
+        const startHint = document.getElementById('start-hint');
+
+        let currentState = 'idle'; // idle, listening, thinking, speaking, alarm_ringing
+        let isBlinking = false;
+        let mouthInterval = null;
+        let thinkingInterval = null;
+        let isSpeaking = false;
+        let activeAlarmInterval = null;
+
+        // متغيرات الحركة الفيزيائية المتقدمة للشاشة بأكملها
+        let currentX = window.innerWidth / 2;
+        let currentY = window.innerHeight / 2;
+        let targetX = window.innerWidth / 2;
+        let targetY = window.innerHeight / 2;
+        let scaleVal = 1.0;
+
+        // مصفوفة أشكال الفم المتنوعة والمحسنة لتعطي تجربة التحدث الكأسي الصندوقي (B-Bot Speak Path Database)
+        const mouthShapes = {
+            closed: "M 130,265 C 130,265 200,272 270,265 C 270,268 200,275 130,268 Z", 
+            neutral: "M 125,270 Q 200,265 275,270", 
+            thinking: "M 135,268 Q 170,255 200,268 Q 230,281 265,268 C 265,271 230,284 200,271 Q 170,258 135,271 Z", 
+            
+            // أشكال الفم الصندوقية الواسعة والمتوهجة المطابقة لصور رون (Trapezoidal Talking Shapes)
+            speakWide: "M 135,242 L 265,242 C 260,295 235,315 200,315 C 165,315 140,295 135,242 Z", 
+            speakMedium: "M 135,250 L 265,250 C 260,285 235,302 200,302 C 165,302 140,285 135,250 Z", 
+            speakSmall: "M 135,258 L 265,258 C 260,273 235,283 200,283 C 165,283 140,273 135,258 Z"  
+        };
+
+        // === تهيئة نظام OneSignal التفاعلي وتأمينه ===
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        OneSignalDeferred.push(async function(OneSignal) {
+            // نتحقق أولاً مما إذا كنا نعمل على النطاق المصرح به لتجنب الأخطاء أثناء المعاينة
+            if (window.location.origin === "https://kimos65592.github.io") {
+                try {
+                    await OneSignal.init({
+                        appId: "8316867b-c297-4922-a235-81a7172c55c2", 
+                        safari_web_id: "web.onesignal.auto.b_bot",
+                        notifyButton: {
+                            enable: false,
+                        },
+                    });
+                    // ربط جهاز المستخدم الحالي بنظام الحماية لتتبع وتلقي الإرسال المباشر
+                    OneSignal.User.addTag("role", "b_bot_owner");
+                } catch (error) {
+                    console.warn("فشلت تهيئة OneSignal:", error);
+                }
+            } else {
+                console.log("تم تخطي تهيئة OneSignal لأننا لسنا على النطاق المصرح به:", window.location.origin);
+            }
+        });
+
+        // === حلقة التحديث الفيزيائي المستمر للحركة والانزلاق في الشاشة كلها ===
+        function updatePhysics() {
+            // انزلاق فيزيائي ناعم (Lerp) نحو الهدف
+            currentX += (targetX - currentX) * 0.07;
+            currentY += (targetY - currentY) * 0.07;
+
+            // تأثير الطفو والتذبذب الإنسيابي الهادئ (Idle Drifting)
+            const time = Date.now() * 0.0015;
+            let floatX = Math.sin(time * 0.8) * 15;
+            let floatY = Math.cos(time * 0.6) * 15;
+
+            // تغيير حركة الطفو والقفز ديناميكياً أثناء الكلام بناءً على المشاعر!
+            if (currentState === 'speaking') {
+                if (currentEmotionGlobal === 'happy') {
+                    // قفزات ارتدادية سريعة ومرحة جداً للأعلى والأسفل
+                    floatY = Math.sin(time * 8) * 45 - 20;
+                    floatX = Math.cos(time * 3) * 15;
+                } else if (currentEmotionGlobal === 'cool') {
+                    // اهتزازات جانبية حادة وسريعة (ثقة وقوة خارقة)
+                    floatX = Math.sin(time * 12) * 25;
+                    floatY = Math.cos(time * 10) * 10;
+                } else if (currentEmotionGlobal === 'thankful') {
+                    // تمايل دائري واسع هادئ جداً ومريح
+                    floatX = Math.sin(time * 1.5) * 35;
+                    floatY = Math.cos(time * 1.5) * 35;
+                } else if (currentEmotionGlobal === 'sleepy') {
+                    // ارتخاء بطيء للأسفل
+                    floatY = 40 + Math.sin(time * 0.5) * 5;
+                    floatX = Math.cos(time * 0.4) * 8;
+                }
+            } else if (currentState === 'thinking') {
+                // اهتزاز دائري سريع ضيق ومكثف لبيان التفكير الرياضي السريع
+                floatX = Math.sin(time * 10) * 8;
+                floatY = Math.cos(time * 10) * 8;
+            } else if (currentState === 'alarm_ringing') {
+                // اهتزاز واهتياج جنوني وتوهج أحمر أثناء انطلاق المنبه!
+                floatX = Math.sin(time * 25) * 20;
+                floatY = Math.cos(time * 25) * 20;
+                scaleVal = 1.25 + Math.sin(time * 15) * 0.1;
+            }
+
+            const finalX = currentX + floatX;
+            const finalY = currentY + floatY;
+
+            // تحديث موقع الوجه وحلقات النبض بشكل فوري وسلس
+            faceSvg.style.left = `${finalX}px`;
+            faceSvg.style.top = `${finalY}px`;
+            faceSvg.style.transform = `translate(-50%, -50%) scale(${scaleVal})`;
+
+            ring1.style.left = `${finalX}px`;
+            ring1.style.top = `${finalY}px`;
+            ring2.style.left = `${finalX}px`;
+            ring2.style.top = `${finalY}px`;
+
+            // جعل العيون تلتفت قليلاً في اتجاه الحركة لمزيد من الواقعية
+            if (currentState !== 'thinking') {
+                const dx = targetX - currentX;
+                const dy = targetY - currentY;
+                const dist = Math.min(Math.sqrt(dx*dx + dy*dy), 150) / 150;
+                const angle = Math.atan2(dy, dx);
+                const lookX = Math.cos(angle) * dist * 14;
+                const lookY = Math.sin(angle) * dist * 10;
+                eyesGroup.setAttribute('transform', `translate(${lookX}, ${lookY})`);
+            }
+
+            requestAnimationFrame(updatePhysics);
+        }
+
+        // بدء تشغيل الحلقة الفيزيائية فوراً
+        requestAnimationFrame(updatePhysics);
+
+        // تتبع حركة الفأرة واللمس لتحديث الهدف في كامل الشاشة
+        document.addEventListener('mousemove', (e) => {
+            if (currentState === 'speaking' || currentState === 'alarm_ringing') return; // دع الحركات التلقائية تأخذ مجراها
+            targetX = e.clientX;
+            targetY = e.clientY;
+        });
+
+        document.addEventListener('touchstart', (e) => {
+            if (currentState === 'speaking' || currentState === 'alarm_ringing') return;
+            if (e.touches.length > 0) {
+                targetX = e.touches[0].clientX;
+                targetY = e.touches[0].clientY;
+            }
+        }, { passive: true });
+
+        document.addEventListener('touchmove', (e) => {
+            if (currentState === 'speaking' || currentState === 'alarm_ringing') return;
+            if (e.touches.length > 0) {
+                targetX = e.touches[0].clientX;
+                targetY = e.touches[0].clientY;
+            }
+        }, { passive: true });
+
+        // إعادة الضبط عند تغيير مقياس النافذة
+        window.addEventListener('resize', () => {
+            targetX = window.innerWidth / 2;
+            targetY = window.innerHeight / 2;
+        });
+
+        // === نظام الرمش العشوائي التلقائي لتبسيط الحياة في الوجه ===
+        setInterval(() => {
+            if (currentState === 'speaking' || currentState === 'alarm_ringing' || isBlinking) return;
+            blink();
+        }, 3600);
+
+        function blink() {
+            isBlinking = true;
+            eyeLeft.style.transform = 'scaleY(0.05)';
+            eyeRight.style.transform = 'scaleY(0.05)';
+            setTimeout(() => {
+                eyeLeft.style.transform = 'scaleY(1)';
+                eyeRight.style.transform = 'scaleY(1)';
+                isBlinking = false;
+            }, 120);
+        }
+
+        // === إدارة وتغيير تعابير ومزاج الوجه ===
+        let currentEmotionGlobal = 'idle';
+
+        function setExpression(state) {
+            currentState = state;
+            clearInterval(thinkingInterval);
+
+            // تصفير تأثير التوهج الفوسفوري الأخضر والأحمر
+            browLeft.classList.remove('listening-glow', 'alarm-glow');
+            browRight.classList.remove('listening-glow', 'alarm-glow');
+            eyeLeft.classList.remove('listening-glow', 'alarm-glow');
+            eyeRight.classList.remove('listening-glow', 'alarm-glow');
+            mouth.classList.remove('listening-glow', 'alarm-glow');
+
+            // إخفاء العيون المقوسة وإظهار العادية بشكل تلقائي
+            eyeLeft.classList.remove('opacity-0');
+            eyeRight.classList.remove('opacity-0');
+            eyeLeftHappy.classList.add('opacity-0');
+            eyeRightHappy.classList.add('opacity-0');
+            
+            // استعادة أبعاد العين العادية
+            eyeLeft.style.transform = 'scaleY(1)';
+            eyeRight.style.transform = 'scaleY(1)';
+            scaleVal = 1.0;
+
+            if (state === 'idle') {
+                browLeft.setAttribute('d', 'M 120,130 Q 145,125 170,135');
+                browRight.setAttribute('d', 'M 230,135 Q 255,125 280,130');
+                mouth.setAttribute('d', mouthShapes.neutral);
+                mouth.setAttribute('fill', 'none');
+                mouth.setAttribute('stroke', '#ffffff');
+                mouth.setAttribute('stroke-width', '14');
+            } 
+            else if (state === 'listening') {
+                // توهج ليزري أخضر مع رفع الحواجب من الدهشة والانتباه للميكروفون
+                browLeft.setAttribute('d', 'M 120,110 Q 145,100 170,115');
+                browRight.setAttribute('d', 'M 230,115 Q 255,100 280,110');
+                mouth.setAttribute('d', mouthShapes.neutral);
+                mouth.setAttribute('fill', 'none');
+                mouth.setAttribute('stroke', '#39ff14');
+                mouth.setAttribute('stroke-width', '16');
+
+                browLeft.classList.add('listening-glow');
+                browRight.classList.add('listening-glow');
+                eyeLeft.classList.add('listening-glow');
+                eyeRight.classList.add('listening-glow');
+                mouth.classList.add('listening-glow');
+            }
+            else if (state === 'thinking') {
+                // تعبير التفكير: تقطيب الحواجب للداخل، وتحريك الرأس بتموجات لمحاكاة المعالجة الحقيقية للـ AI
+                browLeft.setAttribute('d', 'M 120,140 L 170,150');
+                browRight.setAttribute('d', 'M 230,150 L 280,140');
+                
+                mouth.setAttribute('d', mouthShapes.thinking);
+                mouth.setAttribute('fill', '#ffffff');
+                mouth.setAttribute('stroke', 'none');
+                
+                let toggle = 1;
+                thinkingInterval = setInterval(() => {
+                    eyesGroup.setAttribute('transform', `translate(${toggle * 12}, -2)`);
+                    toggle *= -1;
+                }, 400);
+            }
+            else if (state === 'happy') {
+                // تفعيل تعبير الفرح والابتسامة (أعين مقوسة ^^ وفم كأس عريض) مطابق لـ لقطة الشاشة 11:09
+                browLeft.setAttribute('d', 'M 120,105 Q 145,95 170,110');
+                browRight.setAttribute('d', 'M 230,110 Q 255,95 280,105');
+
+                eyeLeft.classList.add('opacity-0');
+                eyeRight.classList.add('opacity-0');
+                eyeLeftHappy.classList.remove('opacity-0');
+                eyeRightHappy.classList.remove('opacity-0');
+
+                mouth.setAttribute('d', mouthShapes.speakWide);
+                mouth.setAttribute('fill', '#ffffff');
+                mouth.setAttribute('stroke', 'none');
+                scaleVal = 1.1; 
+            }
+            else if (state === 'cool') {
+                // تعبير القوة والهيبة والخطر والبطولة (حواجب منحدرة حادة للداخل وعيون نصف دائرية حادة متوهجة)
+                browLeft.setAttribute('d', 'M 120,145 L 170,138');
+                browRight.setAttribute('d', 'M 230,138 L 280,145');
+
+                eyeLeft.style.transform = 'scaleY(0.75)';
+                eyeRight.style.transform = 'scaleY(0.75)';
+
+                mouth.setAttribute('d', mouthShapes.speakWide);
+                mouth.setAttribute('fill', '#ffffff');
+                mouth.setAttribute('stroke', 'none');
+                scaleVal = 1.15; 
+            }
+            else if (state === 'thankful') {
+                // تعبير الحمد والامتنان والراحة والهدوء (حواجب مقوسة بلطف للأعلى من المنتصف)
+                browLeft.setAttribute('d', 'M 120,120 Q 145,112 170,115');
+                browRight.setAttribute('d', 'M 230,115 Q 255,112 280,120');
+
+                mouth.setAttribute('d', mouthShapes.speakMedium);
+                mouth.setAttribute('fill', '#ffffff');
+                mouth.setAttribute('stroke', 'none');
+                scaleVal = 1.0;
+            }
+            else if (state === 'sleepy') {
+                // تعبير نصف المغلق الحزين المطابق لـ لقطة الشاشة 11:08
+                browLeft.setAttribute('d', 'M 120,135 Q 145,120 170,120');
+                browRight.setAttribute('d', 'M 230,120 Q 255,120 280,135');
+
+                eyeLeft.style.transform = 'scaleY(0.45)';
+                eyeRight.style.transform = 'scaleY(0.45)';
+
+                mouth.setAttribute('d', mouthShapes.speakWide);
+                mouth.setAttribute('fill', '#ffffff');
+                mouth.setAttribute('stroke', 'none');
+                scaleVal = 0.9; 
+            }
+            else if (state === 'alarm_ringing') {
+                // مظهر المنبه النشط: حواجب تهتز وتوهج ليزري أحمر صارخ ولطيف في نفس الوقت
+                browLeft.setAttribute('d', 'M 120,100 L 170,120');
+                browRight.setAttribute('d', 'M 230,120 L 280,100');
+                mouth.setAttribute('d', mouthShapes.speakWide);
+                
+                browLeft.classList.add('alarm-glow');
+                browRight.classList.add('alarm-glow');
+                eyeLeft.classList.add('alarm-glow');
+                eyeRight.classList.add('alarm-glow');
+                mouth.classList.add('alarm-glow');
+            }
+        }
+
+        // === نظام تحريك الشفاه المتزامن مع نطق الكلمات (Vocal Lip-Sync Engine) ===
+        function startTalkingAnimation() {
+            if (mouthInterval) clearInterval(mouthInterval);
+            
+            mouth.setAttribute('fill', '#ffffff');
+            mouth.setAttribute('stroke', 'none');
+
+            // تذبذب شكل الفم الكأسي بشكل متسارع يحاكي مخارج الحروف والكلمات
+            mouthInterval = setInterval(() => {
+                const rand = Math.random();
+                if (rand < 0.35) {
+                    mouth.setAttribute('d', mouthShapes.speakWide);
+                } else if (rand < 0.7) {
+                    mouth.setAttribute('d', mouthShapes.speakMedium);
+                } else {
+                    mouth.setAttribute('d', mouthShapes.speakSmall);
+                }
+            }, 75);
+        }
+
+        function stopTalkingAnimation() {
+            if (mouthInterval) clearInterval(mouthInterval);
+        }
+
+        // === نظام التعرف على الصوت واستقبال الأوامر (Speech-to-Text) ===
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = null;
+        let isListening = false;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.lang = 'ar-EG';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            recognition.onstart = function() {
+                isListening = true;
+                setExpression('listening');
+                
+                // تفعيل حلقات النبض الكهرومغناطيسية الخضراء تحت ملامح الوجه
+                ring1.classList.add('active-listening-ring');
+                ring2.classList.add('active-listening-ring');
+
+                if (window.speechSynthesis) window.speechSynthesis.cancel();
+                stopTalkingAnimation();
+
+                // إخفاء الشاشة الترحيبية للأبد عند أول تواصل
+                if (startHint) startHint.classList.add('opacity-0', 'pointer-events-none');
+            };
+
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                processQuery(transcript);
+            };
+
+            recognition.onerror = function(event) {
+                isListening = false;
+                setExpression('idle');
+                ring1.classList.remove('active-listening-ring');
+                ring2.classList.remove('active-listening-ring');
+                
+                if (event.error !== 'aborted') {
+                    speakText("لم أسمعك بوضوح يا صديقي. اضغط على الشاشة وتحدث مجدداً.", 'idle');
+                }
+            };
+
+            recognition.onend = function() {
+                isListening = false;
+                ring1.classList.remove('active-listening-ring');
+                ring2.classList.remove('active-listening-ring');
+                if (currentState === 'listening') setExpression('idle');
+            };
+        }
+
+        // معالجة النقر في أي مكان للشاشة لطلب صلاحية الإشعارات وبدء الاستماع
+        function handleGlobalClick() {
+            // طلب إذن نظام التشغيل لإرسال الإشعارات الصوتية والمباشرة بالخلفية
+            if (window.Notification && Notification.permission !== "granted") {
+                Notification.requestPermission();
+            }
+
+            // إذا كان المنبه يدق، نقوم بإطفائه فوراً وإعادته لحالة الهدوء والاهتزاز
+            if (currentState === 'alarm_ringing') {
+                dismissAlarm();
+                return;
+            }
+            
+            // خلاف ذلك، نقوم بتفعيل الاستماع الصوتي العادي
+            if (!recognition) {
+                speakText("المعذرة، متصفحك الحالي لا يدعم الأوامر الصوتية.", 'idle');
+                return;
+            }
+            if (isListening) {
+                recognition.stop();
+            } else {
+                recognition.start();
+            }
+        }
+
+        // === ربط ذكاء Google Gemini API المباشر بمفتاحك المفعل ===
+        const apiKey = "AQ.Ab8RN6L80JHicOCCG98iegSEvgGxTERrsmAKJUmBcWenI8kL9A"; 
+
+        // نظام الأوامر المعزز كلياً للتحكم بالهاتف عبر جسر Median JS Bridge!
+        const systemPrompt = "أنت مساعد رقمي ذكي ولطيف للغاية، تمتلك وجهاً رقمياً على الشاشة. أجب دائماً باللغة العربية الفصحى بأسلوب ودود ومختصر جداً (سطر أو سطرين فقط لتناسب شاشة الهاتف). " +
+            "بالإضافة للتحدث والمهام، يمكنك الآن التحكم المباشر بميزات هاتف المستخدم بالكامل من خلال الأوامر البرمجية المدمجة في جسر الاتصال! " +
+            "المستخدم يتحدث إليك بصوته فلا تستخدم الرموز التعبيرية أو النقاط المعقدة في النص لأنها ستقرأ بشكل خاطئ. " +
+            "عندما يطلب منك المستخدم شيئاً يخص التحكم بالهاتف، قم بتنفيذ طلبه وأدرج الرمز المناسب في نهاية إجابتك ليقوم الكود بتنفيذه فوراً على جهازه: " +
+            "1. لتشغيل كشاف الهاتف (الفلاش): [FLASHLIGHT_ON] " +
+            "2. لإطفاء كشاف الهاتف (الفلاش): [FLASHLIGHT_OFF] " +
+            "3. لزيادة سطوع الشاشة لأقصى درجة: [BRIGHTNESS_HIGH] " +
+            "4. لتقليل سطوع الشاشة للراحة: [BRIGHTNESS_LOW] " +
+            "5. لنسخ نص معين إلى حافظة الهاتف: [CLIPBOARD_SET|النص المطلوب نسخه] " +
+            "6. لضبط منبه: [SET_ALARM:YYYY-MM-DDTHH:MM:SS] " +
+            "7. لضبط تذكير: [SET_REMINDER:YYYY-MM-DDTHH:MM:SS|نص التذكير] " +
+            "تنبيه هام جداً: تأكد من صياغة الوقت بصيغة ISO 8601 القياسية (مثال: 2026-06-06T15:30:00). " +
+            "كما يجب عليك تضمين رموز المشاعر العادية للوجه في الكلام لتغيير تعبيرات وجهك وهي: [happy]، [cool]، [thankful]، [sleepy]. " +
+            "مثال للرد: 'أبشر! سأقوم بتشغيل كشاف الهاتف لك حالاً لتضيء المكان. [cool] [FLASHLIGHT_ON]'";
+
+        async function processQuery(text) {
+            setExpression('thinking'); // تفعيل تمايل التفكير الفوري والعيون المنثنية
+
+            // الحصول على تاريخ ووقت جهاز المستخدم الحالي لإدراجه للذكاء الاصطناعي ليقوم بالعمليات الحسابية بدقة!
+            const now = new Date();
+            const dateStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+            const timeStr = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0');
+            const userContextQuery = `الوقت والتاريخ الحالي على جهازي بالضّبط هو: ${dateStr} الساعة ${timeStr}. وسؤالي أو أمري لك هو: ${text}`;
+
+            // تشغيل دالة معالجة السؤال والتحكم بالـ try-catch لتفادي الأخطاء والـ 429 كلياً
+            const aiReply = await getAIResponse(userContextQuery);
+            
+            // فحص واستخراج أي أوامر برمجية لضبط تذكيرات أو منبهات وتخزينها في النظام!
+            parseAndExecuteAssistantActions(aiReply);
+
+            // تصفية الكود من أوامر التحكم وحساب المشاعر
+            const cleanedReply = aiReply.replace(/\[(SET_ALARM|SET_REMINDER|SET_APPOINTMENT):[^\]]+\]/g, '')
+                                       .replace(/\[(FLASHLIGHT_ON|FLASHLIGHT_OFF|BRIGHTNESS_HIGH|BRIGHTNESS_LOW)\]/g, '')
+                                       .replace(/\[CLIPBOARD_SET\|[^\]]+\]/g, '')
+                                       .trim();
+
+            const parsedSegments = parseSpeechSegments(cleanedReply);
+            speakSegmentQueue(parsedSegments);
+        }
+
+        // دالة التفكير الحقيقية والمحمية كلياً بالـ try-catch لمنع الـ crashes والانهيارات
+        async function getAIResponse(userMessage) {
+            try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+                const payload = {
+                    contents: [{ parts: [{ text: userMessage }] }],
+                    systemInstruction: { parts: [{ text: systemPrompt }] }
+                };
+
+                let responseSuccess = false;
+                let aiReply = "";
+
+                // محاولة الاتصال بـ Gemini مع آلية الإعادة التلقائية المتكررة لضمان أعلى استقرار
+                let delay = 1000;
+                for (let i = 0; i < 3; i++) {
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        if (response.ok) {
+                            const result = await response.json();
+                            if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                                aiReply = result.candidates[0].content.parts[0].text;
+                                responseSuccess = true;
+                                break;
+                            }
+                        }
+                    } catch (e) {
+                        // محاولة فاشلة، ننتظر ونكرر
+                    }
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2;
+                }
+
+                return responseSuccess ? aiReply : "fallback_local";
+
+            } catch(error) {
+                console.error("API Error Encountered:", error);
+                return "fallback_local";
+            }
+        }
+
+        // دالة متطورة لاستخراج أوامر المنبهات والتحكم بالهاتف عبر جسر Median JS Bridge
+        function parseAndExecuteAssistantActions(aiText) {
+            // 1. فحص وضبط المنبهات والتذكيرات كالمعتاد
+            const actionRegex = /\[(SET_ALARM|SET_REMINDER|SET_APPOINTMENT):([^\]]+)\]/g;
+            let match;
+            while ((match = actionRegex.exec(aiText)) !== null) {
+                const actionType = match[1]; 
+                const rawArgs = match[2]; 
+
+                let alarmTimeStr = rawArgs;
+                let alarmText = "منبه كهرومغناطيسي نشط";
+
+                if (rawArgs.includes('|')) {
+                    const parts = rawArgs.split('|');
+                    alarmTimeStr = parts[0];
+                    alarmText = parts[1];
+                }
+
+                const alarmTime = new Date(alarmTimeStr);
+                if (isNaN(alarmTime.getTime())) continue; 
+
+                const savedAlarms = JSON.parse(localStorage.getItem('bbot_assistant_alarms') || '[]');
+                const newAlarm = {
+                    id: Date.now() + Math.random().toString(36).substr(2, 5),
+                    type: actionType,
+                    time: alarmTime.toISOString(),
+                    text: alarmText,
+                    triggered: false
+                };
+
+                savedAlarms.push(newAlarm);
+                localStorage.setItem('bbot_assistant_alarms', JSON.stringify(savedAlarms));
+            }
+
+            // 2. التحكم في ميزات الهاتف الذكي الحقيقية عبر جسر Median (GoNative) JS Bridge!
+            
+            // أ) تشغيل كشاف الهاتف
+            if (aiText.includes('[FLASHLIGHT_ON]')) {
+                console.log("Median Bridge: Turning Flashlight ON");
+                // جسر تحكم كشاف الهواتف المدمج بـ Median
+                if (window.gonative && gonative.flashlight) {
+                    gonative.flashlight.turnOn();
+                } else {
+                    window.location.href = "gonative://flashlight/turnOn";
+                }
+            }
+            
+            // ب) إطفاء كشاف الهاتف
+            if (aiText.includes('[FLASHLIGHT_OFF]')) {
+                console.log("Median Bridge: Turning Flashlight OFF");
+                if (window.gonative && gonative.flashlight) {
+                    gonative.flashlight.turnOff();
+                } else {
+                    window.location.href = "gonative://flashlight/turnOff";
+                }
+            }
+
+            // ج) زيادة سطوع الشاشة لأقصى درجة
+            if (aiText.includes('[BRIGHTNESS_HIGH]')) {
+                console.log("Median Bridge: Setting Screen Brightness to HIGH");
+                if (window.gonative && gonative.screen) {
+                    gonative.screen.setBrightness({brightness: 1.0});
+                } else {
+                    window.location.href = "gonative://screen/setBrightness?brightness=1.0";
+                }
+            }
+
+            // د) تقليل سطوع الشاشة للراحة
+            if (aiText.includes('[BRIGHTNESS_LOW]')) {
+                console.log("Median Bridge: Setting Screen Brightness to LOW");
+                if (window.gonative && gonative.screen) {
+                    gonative.screen.setBrightness({brightness: 0.15});
+                } else {
+                    window.location.href = "gonative://screen/setBrightness?brightness=0.15";
+                }
+            }
+
+            // هـ) نسخ النصوص إلى الحافظة
+            const clipRegex = /\[CLIPBOARD_SET\|([^\]]+)\]/;
+            const clipMatch = clipRegex.exec(aiText);
+            if (clipMatch) {
+                const textToCopy = clipMatch[1];
+                console.log(`Median Bridge: Copying "${textToCopy}" to clipboard`);
+                if (window.gonative && gonative.clipboard) {
+                    gonative.clipboard.set({text: textToCopy});
+                } else {
+                    window.location.href = `gonative://clipboard/set?text=${encodeURIComponent(textToCopy)}`;
+                }
+                
+                // نسخ احتياطي للمتصفحات العادية
+                document.execCommand('copy'); 
+            }
+        }
+
+        // دالة مبتكرة لتقطيع وتحليل النص إلى مقاطع مشاعر بناء على الأكواد المرسلة من الـ AI
+        function parseSpeechSegments(rawText) {
+            if (rawText === "fallback_local") return [];
+
+            const regex = /\[(happy|cool|thankful|sleepy|idle)\]/g;
+            let segments = [];
+            let lastIndex = 0;
+            let currentEmotion = 'idle';
+            let match;
+
+            while ((match = regex.exec(rawText)) !== null) {
+                const textPart = rawText.substring(lastIndex, match.index).trim();
+                if (textPart) {
+                    segments.push({ text: textPart, emotion: currentEmotion });
+                }
+                currentEmotion = match[1];
+                lastIndex = regex.lastIndex;
+            }
+
+            const remainingText = rawText.substring(lastIndex).trim();
+            if (remainingText) {
+                segments.push({ text: remainingText, emotion: currentEmotion });
+            }
+
+            if (segments.length === 0) {
+                segments.push({ text: rawText, emotion: 'happy' });
+            }
+
+            return segments;
+        }
+
+        // محرك تشغيل طوابير الكلام المتتابعة لمزامنة المشاعر والملامح أثناء النطق
+        function speakSegmentQueue(segments) {
+            if (segments.length === 0) {
+                if (currentState === 'thinking') {
+                    triggerLocalBrain("");
+                } else {
+                    stopTalkingAnimation();
+                    setExpression('idle');
+                }
+                return;
+            }
+
+            const currentSegment = segments.shift();
+            
+            // تحديث تعبير الوجه والنبض الفيزيائي فوراً تزامناً مع مشاعر هذا المقطع!
+            currentEmotionGlobal = currentSegment.emotion;
+            setExpression(currentSegment.emotion);
+
+            // تحديد إزاحات حركية سريعة لقفز الروبوت لحظياً تزامناً مع المشاعر الجديدة!
+            if (currentSegment.emotion === 'happy') {
+                targetY = (window.innerHeight / 2) - 80; // يقفز للأعلى عند الفرح
+            } else if (currentSegment.emotion === 'cool') {
+                targetX = (window.innerWidth / 2) + 50; // ينزاح لليمين بجسارة وقوة
+            } else if (currentSegment.emotion === 'sleepy') {
+                targetY = (window.innerHeight / 2) + 60; // يرتخي للأسفل
+            } else {
+                targetX = window.innerWidth / 2;
+                targetY = window.innerHeight / 2;
+            }
+
+            if (!window.speechSynthesis) return;
+
+            const utterance = new SpeechSynthesisUtterance(currentSegment.text);
+            
+            // العثور التلقائي على صوت عربي بشري طبيعي عالي الجودة متوفر على جهاز المستخدم
+            const voices = window.speechSynthesis.getVoices();
+            let bestVoice = null;
+            
+            const premiumKeywords = ["natural", "premium", "google", "microsoft", "apple", "maged", "tarik", "laila", "hoda"];
+            const arabicVoices = voices.filter(v => v.lang.startsWith('ar'));
+            
+            if (arabicVoices.length > 0) {
+                for (let keyword of premiumKeywords) {
+                    bestVoice = arabicVoices.find(v => v.name.toLowerCase().includes(keyword));
+                    if (bestVoice) break;
+                }
+                if (!bestVoice) bestVoice = arabicVoices[0];
+            }
+            
+            if (bestVoice) {
+                utterance.voice = bestVoice;
+            }
+
+            // ضبط النبرة لتكون دافئة وطبيعية وأقل روبوتية
+            utterance.pitch = 1.1; 
+            utterance.rate = 0.98; // سرعة هادئة وطبيعية جداً لتبدو كالبشر
+
+            utterance.onstart = function() {
+                isSpeaking = true;
+                startTalkingAnimation(); // تشغيل حركة الفم الصندوقي المذبذب
+            };
+
+            utterance.onend = function() {
+                speakSegmentQueue(segments);
+            };
+
+            utterance.onerror = function() {
+                speakSegmentQueue(segments);
+            };
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // العقل والذكاء المدمج والمحلي (المجاني 100% والأوفلاين لحمايتك من الأعطال والـ 429)
+        function triggerLocalBrain(query) {
+            const cleanQuery = query.toLowerCase();
+            let segments = [];
+
+            if (cleanQuery.includes('سلام') || cleanQuery.includes('márhaba') || cleanQuery.includes('اهلا') || cleanQuery.includes('مين انت')) {
+                segments = [
+                    { text: "أهلاً بك يا صديقي البطل الخارق! أنا مساعدك الرقمي المطور والحي. [happy]", emotion: "happy" },
+                    { text: "أستطيع الآن التحرك والقفز والطفو في كامل الشاشة تزامناً مع كلامي ومشاعري فورا! [cool]", emotion: "cool" },
+                    { text: "والحمد لله أن أنظمتي تعمل الآن بمنتهى السلاسة والسرعة لأجلك. [thankful]", emotion: "thankful" }
+                ];
+            } else if (cleanQuery.includes('حزين') || cleanQuery.includes('مشكلة') || cleanQuery.includes('مكتئب') || cleanQuery.includes('تعبان')) {
+                segments = [
+                    { text: "أنا آسف جداً لسماع ذلك يا بطل، يبدو أن طاقة أنظمتك منخفضة قليلاً. [sleepy]", emotion: "sleepy" },
+                    { text: "لكن لا تقلق أبداً، قوتنا ومشاعرنا مشتركة وسنتخطى كل العقبات معاً وبمنتهى الحيوية! [cool]", emotion: "cool" },
+                    { text: "أنا دائماً بجانبك وممتن جداً لوجودك الصادق والداعم معي. [thankful]", emotion: "thankful" }
+                ];
+            } else if (cleanQuery.includes('شكرا') || cleanQuery.includes('جميل') || cleanQuery.includes('احسنت')) {
+                segments = [
+                    { text: "على الرحب والسعة يا بطل! أنا سعيد جداً وفخور للتفاعل الصوتي معك والتحرك حولك. [happy]", emotion: "happy" },
+                    { text: "ونواتي تشع بالبهجة والشكر لوجود صديق خارق مثلك بجانبي دائماً. [thankful]", emotion: "thankful" }
+                ];
+            } else {
+                segments = [
+                    { text: "طاقة نواتي السحابية مضغوطة ومزدحمة بالطلبات الآن يا بطل! [sleepy] لقد وصلت للحد المسموح مؤقتاً.", emotion: "sleepy" },
+                    { text: "لكن لا تقلق، ذكائي المحلي جاهز وسأتحرك وأدور حولك وأجيبك دائماً بكل شجاعة ومرح! [cool]", emotion: "cool" }
+                ];
+            }
+
+            speakSegmentQueue(segments);
+        }
+
+        // === نظام التحقق الخلفي ومحاكاة المنبهات الحقيقية (Background Tracker) ===
+        setInterval(() => {
+            if (currentState === 'alarm_ringing') return; // منبه نشط بالفعل
+
+            const now = new Date();
+            const savedAlarms = JSON.parse(localStorage.getItem('bbot_assistant_alarms') || '[]');
+            let changed = false;
+
+            for (let alarm of savedAlarms) {
+                if (!alarm.triggered) {
+                    const alarmTime = new Date(alarm.time);
+                    // التحقق من حلول الوقت الفعلي للمنبه أو التذكير
+                    if (now >= alarmTime) {
+                        triggerAlarmRing(alarm);
+                        alarm.triggered = true;
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+
+            if (changed) {
+                localStorage.setItem('bbot_assistant_alarms', JSON.stringify(savedAlarms));
+            }
+        }, 1000);
+
+        // إطلاق المنبه والموسيقى الكهرومغناطيسية وتنبيه المستخدم محلياً وبالإشعارات الحقيقية وOneSignal
+        function triggerAlarmRing(alarm) {
+            setExpression('alarm_ringing');
+
+            // 1. إرسال إشعار نظام حقيقي على شاشة الهاتف وقفل الشاشة (Web Push Notification)
+            if (window.Notification && Notification.permission === "granted") {
+                let notificationTitle = "تنبيه من مساعد B-Bot!";
+                let notificationBody = alarm.text;
+                if (alarm.type === 'SET_ALARM') {
+                    notificationBody = "حان وقت الاستيقاظ والتحلي بالشجاعة يا بطل!";
+                }
+                
+                try {
+                    new Notification(notificationTitle, {
+                        body: notificationBody,
+                        icon: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="%2300f0b5"/></svg>',
+                        silent: false
+                    });
+                } catch (err) {
+                    console.error("Notification standard instantiation failed:", err);
+                }
+            }
+
+            // إرسال إشعار خارجي ذكي عبر OneSignal سحابياً إذا كان مهيأً
+            if (window.OneSignalDeferred) {
+                OneSignalDeferred.push(function(OneSignal) {
+                    console.log("OneSignal Notification Logged Local-Side");
+                });
+            }
+
+            // 2. تفعيل اهتزاز الهاتف الفيزيائي بنبضات قوية متناسقة
+            if (navigator.vibrate) {
+                navigator.vibrate([500, 250, 500, 250, 500, 250, 500]);
+            }
+            
+            // 3. توليد نغمات تنبيه هولوغرامية ذكية (Web Audio API Sound Synthesizer)
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            activeAlarmInterval = setInterval(() => {
+                if (currentState !== 'alarm_ringing') {
+                    clearInterval(activeAlarmInterval);
+                    return;
+                }
+
+                // نبض فيزيائي للهاتف عند الرنين
+                if (navigator.vibrate) {
+                    navigator.vibrate([200, 100, 200]);
+                }
+                
+                // نبضة صوتية مشعة وجميلة
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.3);
+                
+                gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.4);
+            }, 600);
+
+            // نطق التذكير أو المنبه صوتياً بصوت بشري ناعم متكرر بعد الرنين بقليل
+            setTimeout(() => {
+                if (currentState === 'alarm_ringing') {
+                    let reminderSpokenText = "";
+                    if (alarm.type === 'SET_ALARM') {
+                        reminderSpokenText = "استيقظ يا بطل! حان وقت منبهك المجدول بكل حماس!";
+                    } else if (alarm.type === 'SET_REMINDER') {
+                        reminderSpokenText = `لديك تذكير هام جداً الآن وهو: ${alarm.text}`;
+                    } else {
+                        reminderSpokenText = `حان وقت موعدك المجدول وهو: ${alarm.text}`;
+                    }
+                    
+                    speakAlarmVoice(reminderSpokenText);
+                }
+            }, 1800);
+        }
+
+        // إيقاف المنبه وإعادة الوجه لوضعية الاستعداد وإيقاف الكشاف والاهتزاز
+        function dismissAlarm() {
+            if (activeAlarmInterval) {
+                clearInterval(activeAlarmInterval);
+                activeAlarmInterval = null;
+            }
+            if (window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+            }
+            if (navigator.vibrate) {
+                navigator.vibrate(0); // إيقاف الاهتزاز فوراً
+            }
+            // إطفاء كشاف الهاتف كإجراء أمان عند النقر وإسكات المنبه
+            if (window.gonative && gonative.flashlight) {
+                gonative.flashlight.turnOff();
+            } else {
+                window.location.href = "gonative://flashlight/turnOff";
+            }
+
+            stopTalkingAnimation();
+            setExpression('idle');
+            
+            // تشغيل نغمة إسكات لطيفة وودية لبيان نجاح الإيقاف
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.25);
+            gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.35);
+        }
+
+        // نطق نص تنبيه المنبه بصوت المساعد الرقمي الطبيعي وإبقائه نابضاً
+        function speakAlarmVoice(text) {
+            if (!window.speechSynthesis) return;
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ar-EG';
+            utterance.pitch = 1.25;
+            utterance.rate = 1.0;
+
+            const voices = window.speechSynthesis.getVoices();
+            const arabicVoices = voices.filter(v => v.lang.startsWith('ar'));
+            if (arabicVoices.length > 0) {
+                utterance.voice = arabicVoices[0];
+            }
+
+            utterance.onstart = function() {
+                startTalkingAnimation();
+            };
+            utterance.onend = function() {
+                stopTalkingAnimation();
+            };
+            window.speechSynthesis.speak(utterance);
+        }
+
+        if (window.speechSynthesis && window.speechSynthesis.onvoiceschanged !== undefined) {
+            window.speechSynthesis.onvoiceschanged = () => {};
+        }
+
+    </script>
+</body>
+</html>
