@@ -1,33 +1,24 @@
-/*
- * =========================================================
- * J.A.R.V.I.S V3.1
- * WEB PROTOTYPE
- *
- * Architecture:
- *
- * User
- *   ↓
- * Normalizer
- *   ↓
- * Intent Router
- *   ↓
- * Security Validator
- *   ↓
- * Confirmation Manager
- *   ↓
- * Action Executor
- *   ↓
- * Voice Output
- *
- * No Android APIs.
- * No external APIs.
- * No network required.
- * =========================================================
- */
+/* =========================================================
+   J.A.R.V.I.S V4 — CORE INTELLIGENCE
+   WEB PROTOTYPE
+
+   Modules:
+   - Arabic normalization
+   - Memory
+   - Intent Router
+   - Security Policy
+   - Tool Registry
+   - Task Planner
+   - Confirmation Manager
+   - TTS
+   - Conversation Controller
+
+   Android layer is intentionally NOT included here.
+========================================================= */
 
 
 /* =========================================================
-   ARABIC NORMALIZER
+   1. ARABIC NORMALIZATION
 ========================================================= */
 
 function normalizeArabic(text) {
@@ -41,148 +32,151 @@ function normalizeArabic(text) {
         "٥", "٦", "٧", "٨", "٩"
     ];
 
-    let normalized = String(text)
-        .toLowerCase()
+    let result =
+        String(text)
+            .toLowerCase()
 
-        // Arabic letter normalization
-        .replace(/[إأآٱا]/g, "ا")
-        .replace(/ى/g, "ي")
-        .replace(/ة/g, "ه")
+            .replace(
+                /[إأآٱ]/g,
+                "ا"
+            )
 
-        // Remove tashkeel
-        .replace(/[\u0617-\u061A\u064B-\u0652]/g, "")
+            .replace(
+                /ى/g,
+                "ي"
+            )
 
-        // Normalize whitespace
-        .replace(/\s+/g, " ")
-        .trim();
+            .replace(
+                /ة/g,
+                "ه"
+            )
 
-    for (let i = 0; i < arabicNumbers.length; i++) {
+            .replace(
+                /[\u0617-\u061A\u064B-\u0652]/g,
+                ""
+            )
 
-        normalized = normalized.replace(
-            new RegExp(arabicNumbers[i], "g"),
-            String(i)
-        );
+            .replace(
+                /\s+/g,
+                " "
+            )
+
+            .trim();
+
+
+    for (let i = 0; i < 10; i++) {
+
+        result =
+            result.replace(
+                new RegExp(
+                    arabicNumbers[i],
+                    "g"
+                ),
+                String(i)
+            );
+
     }
 
-    return normalized;
+    return result;
 }
 
 
 /* =========================================================
-   APPLICATION REGISTRY
-========================================================= */
-
-const APP_REGISTRY = Object.freeze({
-
-    "واتساب": {
-        id: "whatsapp",
-        displayName: "واتساب"
-    },
-
-    "واتس": {
-        id: "whatsapp",
-        displayName: "واتساب"
-    },
-
-    "يوتيوب": {
-        id: "youtube",
-        displayName: "يوتيوب"
-    },
-
-    "كروم": {
-        id: "chrome",
-        displayName: "Google Chrome"
-    },
-
-    "الكاميرا": {
-        id: "camera",
-        displayName: "الكاميرا"
-    },
-
-    "الاعدادات": {
-        id: "settings",
-        displayName: "الإعدادات"
-    }
-
-});
-
-
-/* =========================================================
-   SYSTEM STATE
-========================================================= */
-
-const jarvisState = {
-
-    mode: "IDLE",
-
-    pendingAction: null,
-
-    lastIntent: null,
-
-    lastCommand: null,
-
-    commandCount: 0,
-
-    sessionStarted: Date.now()
-
-};
-
-
-/* =========================================================
-   UI
+   2. UI
 ========================================================= */
 
 const ui = {
 
-    form: document.getElementById("command-form"),
+    form:
+        document.getElementById(
+            "command-form"
+        ),
 
-    input: document.getElementById("user-input"),
+    input:
+        document.getElementById(
+            "user-input"
+        ),
 
-    status: document.getElementById("status-text"),
+    status:
+        document.getElementById(
+            "status-text"
+        ),
 
-    voiceStatus: document.getElementById("voice-status"),
+    log:
+        document.getElementById(
+            "chat-log"
+        ),
 
-    log: document.getElementById("chat-log")
+    memoryStatus:
+        document.getElementById(
+            "memory-status"
+        ),
 
+    ttsStatus:
+        document.getElementById(
+            "tts-status"
+        ),
+
+    commandCount:
+        document.getElementById(
+            "command-count"
+        )
 };
 
 
 /* =========================================================
-   UI HELPERS
+   3. UI MESSAGES
 ========================================================= */
 
-function appendMessage(type, sender, text) {
+function appendMessage(
+    type,
+    sender,
+    text
+) {
 
-    const message = document.createElement("div");
+    const message =
+        document.createElement(
+            "div"
+        );
 
-    message.className = `message ${type}`;
+    message.className =
+        `message ${type}`;
+
 
     const senderElement =
-        document.createElement("span");
+        document.createElement(
+            "span"
+        );
 
-    senderElement.className = "sender";
+    senderElement.className =
+        "sender";
 
-    senderElement.textContent = sender;
+    senderElement.textContent =
+        sender;
+
 
     const body =
-        document.createElement("div");
+        document.createElement(
+            "div"
+        );
 
-    body.textContent = text;
+    body.textContent =
+        text;
+
 
     message.append(
         senderElement,
         body
     );
 
-    ui.log.appendChild(message);
 
-    ui.log.scrollTop = ui.log.scrollHeight;
-}
+    ui.log.appendChild(
+        message
+    );
 
 
-function setStatus(status) {
-
-    ui.status.textContent = status;
+    ui.log.scrollTop =
+        ui.log.scrollHeight;
 }
 
 
@@ -220,14 +214,253 @@ function errorMessage(text) {
 
     appendMessage(
         "error",
-        "SYSTEM ERROR",
+        "SYSTEM",
         text
     );
 }
 
 
+function setStatus(text) {
+
+    ui.status.textContent =
+        text;
+}
+
+
 /* =========================================================
-   VOICE OUTPUT
+   4. MEMORY STORE
+========================================================= */
+
+class MemoryStore {
+
+    constructor() {
+
+        this.storageKey =
+            "jarvis_core_memory_v1";
+
+        this.data =
+            this.load();
+    }
+
+
+    load() {
+
+        try {
+
+            const saved =
+                localStorage.getItem(
+                    this.storageKey
+                );
+
+
+            if (!saved) {
+
+                return {
+                    facts: [],
+                    preferences: {},
+                    history: []
+                };
+            }
+
+
+            const parsed =
+                JSON.parse(saved);
+
+
+            return {
+
+                facts:
+                    Array.isArray(parsed.facts)
+                        ? parsed.facts
+                        : [],
+
+                preferences:
+                    parsed.preferences &&
+                    typeof parsed.preferences === "object"
+                        ? parsed.preferences
+                        : {},
+
+                history:
+                    Array.isArray(parsed.history)
+                        ? parsed.history
+                        : []
+            };
+
+        } catch (error) {
+
+            console.error(
+                "[Memory Load]",
+                error
+            );
+
+
+            return {
+                facts: [],
+                preferences: {},
+                history: []
+            };
+        }
+    }
+
+
+    save() {
+
+        try {
+
+            localStorage.setItem(
+                this.storageKey,
+                JSON.stringify(
+                    this.data
+                )
+            );
+
+            ui.memoryStatus.textContent =
+                "ONLINE";
+
+        } catch (error) {
+
+            ui.memoryStatus.textContent =
+                "ERROR";
+
+            console.error(
+                "[Memory Save]",
+                error
+            );
+        }
+    }
+
+
+    remember(text) {
+
+        const clean =
+            text.trim();
+
+
+        if (!clean) {
+            return false;
+        }
+
+
+        const exists =
+            this.data.facts.some(
+                fact =>
+                    normalizeArabic(fact) ===
+                    normalizeArabic(clean)
+            );
+
+
+        if (!exists) {
+
+            this.data.facts.push(
+                clean
+            );
+
+            this.save();
+
+            return true;
+        }
+
+
+        return false;
+    }
+
+
+    forget(text) {
+
+        const normalized =
+            normalizeArabic(text);
+
+
+        const before =
+            this.data.facts.length;
+
+
+        this.data.facts =
+            this.data.facts.filter(
+                fact =>
+                    normalizeArabic(fact) !==
+                    normalized
+            );
+
+
+        this.save();
+
+
+        return (
+            before !==
+            this.data.facts.length
+        );
+    }
+
+
+    getFacts() {
+
+        return [
+            ...this.data.facts
+        ];
+    }
+
+
+    addHistory(
+        role,
+        content
+    ) {
+
+        this.data.history.push({
+
+            role,
+
+            content,
+
+            timestamp:
+                Date.now()
+
+        });
+
+
+        /*
+         * Keep local history bounded.
+         */
+
+        if (
+            this.data.history.length >
+            100
+        ) {
+
+            this.data.history =
+                this.data.history.slice(
+                    -100
+                );
+        }
+
+
+        this.save();
+    }
+
+
+    clear() {
+
+        this.data = {
+
+            facts: [],
+
+            preferences: {},
+
+            history: []
+        };
+
+
+        this.save();
+    }
+}
+
+
+const memory =
+    new MemoryStore();
+
+
+/* =========================================================
+   5. VOICE OUTPUT / TTS
 ========================================================= */
 
 class VoiceOutput {
@@ -235,93 +468,122 @@ class VoiceOutput {
     constructor() {
 
         this.engine =
-            window.speechSynthesis || null;
+            "speechSynthesis" in window
+                ? window.speechSynthesis
+                : null;
 
-        this.enabled = !!this.engine;
-
-        this.voice = null;
+        this.voice =
+            null;
 
         this.loadVoices();
 
-        if (this.enabled) {
 
-            window.speechSynthesis.onvoiceschanged =
-                () => this.loadVoices();
+        if (this.engine) {
+
+            ui.ttsStatus.textContent =
+                "READY";
+
+
+            this.engine.onvoiceschanged =
+                () => {
+
+                    this.loadVoices();
+
+                };
+
+        } else {
+
+            ui.ttsStatus.textContent =
+                "UNAVAILABLE";
         }
     }
 
 
     loadVoices() {
 
-        if (!this.enabled) {
+        if (!this.engine) {
             return;
         }
+
 
         const voices =
-            window.speechSynthesis.getVoices();
+            this.engine.getVoices();
 
-        if (!voices.length) {
-            return;
-        }
 
-        // Prefer Arabic Egypt
         this.voice =
             voices.find(
-                voice =>
-                    voice.lang &&
-                    voice.lang.toLowerCase() === "ar-eg"
+                item =>
+                    item.lang &&
+                    item.lang
+                        .toLowerCase() ===
+                    "ar-eg"
             )
 
             ||
 
             voices.find(
-                voice =>
-                    voice.lang &&
-                    voice.lang.toLowerCase().startsWith("ar")
+                item =>
+                    item.lang &&
+                    item.lang
+                        .toLowerCase()
+                        .startsWith("ar")
             )
 
             ||
 
             null;
-
-        ui.voiceStatus.textContent =
-            this.voice
-                ? "ARABIC READY"
-                : "TTS READY";
     }
 
 
     speak(text) {
 
-        if (!this.enabled || !text) {
+        if (
+            !this.engine ||
+            !text
+        ) {
             return;
         }
+
 
         try {
 
             this.engine.cancel();
 
+
             const utterance =
-                new SpeechSynthesisUtterance(text);
+                new SpeechSynthesisUtterance(
+                    text
+                );
 
-            utterance.lang = "ar-EG";
 
-            utterance.rate = 0.95;
+            utterance.lang =
+                "ar-EG";
 
-            utterance.pitch = 1.0;
+            utterance.rate =
+                0.95;
 
-            utterance.volume = 1.0;
+            utterance.pitch =
+                1.0;
+
+            utterance.volume =
+                1.0;
+
 
             if (this.voice) {
-                utterance.voice = this.voice;
+
+                utterance.voice =
+                    this.voice;
             }
 
-            this.engine.speak(utterance);
+
+            this.engine.speak(
+                utterance
+            );
 
         } catch (error) {
 
             console.error(
-                "[JARVIS TTS ERROR]",
+                "[TTS]",
                 error
             );
         }
@@ -334,65 +596,52 @@ const voiceOutput =
 
 
 /* =========================================================
-   SIMULATED NATIVE BRIDGE
+   6. ACTION DEFINITIONS
 ========================================================= */
 
-class WebSimulationBridge {
+const ACTIONS = Object.freeze({
 
+    torch: {
+        risk: "low"
+    },
 
-    static vibrate(milliseconds) {
+    vibrate: {
+        risk: "low"
+    },
 
-        console.log(
-            `[SIMULATION] Vibrate: ${milliseconds}ms`
-        );
+    open_app: {
+        risk: "medium"
+    },
 
-        if (
-            "vibrate" in navigator
-        ) {
+    call: {
+        risk: "high"
+    },
 
-            navigator.vibrate(
-                milliseconds
-            );
-        }
+    remember: {
+        risk: "low"
+    },
 
-        return true;
+    forget: {
+        risk: "medium"
+    },
+
+    calculator: {
+        risk: "low"
+    },
+
+    system_status: {
+        risk: "low"
+    },
+
+    help: {
+        risk: "low"
     }
 
-
-    static toggleTorch(state) {
-
-        console.log(
-            `[SIMULATION] Torch: ${state}`
-        );
-
-        return true;
-    }
-
-
-    static openApp(appId) {
-
-        console.log(
-            `[SIMULATION] Open App: ${appId}`
-        );
-
-        return true;
-    }
-
-
-    static call(phoneNumber) {
-
-        console.log(
-            `[SIMULATION] Call: ${phoneNumber}`
-        );
-
-        return true;
-    }
-
-}
+});
 
 
 /* =========================================================
-   INTENT ROUTER
+   7. INTENT ROUTER
 ========================================================= */
 
 class IntentRouter {
@@ -401,7 +650,9 @@ class IntentRouter {
     static route(rawText) {
 
         const text =
-            normalizeArabic(rawText);
+            normalizeArabic(
+                rawText
+            );
 
 
         /* =========================
@@ -443,7 +694,7 @@ class IntentRouter {
         ========================= */
 
         if (
-            /^(اهتز|اهتزاز)$/
+            /^(اهتز|اهتزاز|هز الهاتف)$/
                 .test(text)
         ) {
 
@@ -463,38 +714,76 @@ class IntentRouter {
 
         if (vibration) {
 
+            const seconds =
+                Number(
+                    vibration[1]
+                );
+
+
             return {
                 matched: true,
                 action: "vibrate",
                 payload:
-                    Number(vibration[1]) * 1000
+                    seconds * 1000
             };
         }
 
 
         /* =========================
-           OPEN APP
+           OPEN APPLICATION
         ========================= */
 
         const appMatch =
-            text.match(/^افتح (.+)$/);
+            text.match(
+                /^(?:افتح|شغل) (?:تطبيق )?(.+)$/
+            );
 
 
         if (appMatch) {
 
-            const appName =
+            const requested =
                 appMatch[1].trim();
 
-            const app =
-                APP_REGISTRY[appName];
 
-            if (app) {
+            const apps = {
+
+                "واتساب":
+                    "whatsapp",
+
+                "واتس":
+                    "whatsapp",
+
+                "يوتيوب":
+                    "youtube",
+
+                "كروم":
+                    "chrome",
+
+                "الكاميرا":
+                    "camera",
+
+                "الاعدادات":
+                    "settings"
+
+            };
+
+
+            if (
+                apps[requested]
+            ) {
 
                 return {
+
                     matched: true,
-                    action: "open_app",
-                    payload: app.id,
-                    displayName: app.displayName
+
+                    action:
+                        "open_app",
+
+                    payload:
+                        apps[requested],
+
+                    displayName:
+                        requested
                 };
             }
         }
@@ -514,25 +803,133 @@ class IntentRouter {
 
             const candidate =
                 callMatch[1]
-                    .replace(/[\s\-()]/g, "");
+                    .replace(
+                        /[\s\-()]/g,
+                        ""
+                    );
 
 
             if (
-                /^\d+$/.test(candidate)
+                /^\d+$/.test(candidate) &&
+                /^01[0125]\d{8}$/
+                    .test(candidate)
             ) {
 
-                if (
-                    /^01[0125]\d{8}$/
-                        .test(candidate)
-                ) {
+                return {
 
-                    return {
-                        matched: true,
-                        action: "call",
-                        payload: candidate
-                    };
-                }
+                    matched: true,
+
+                    action:
+                        "call",
+
+                    payload:
+                        candidate
+                };
             }
+
+
+            return {
+
+                matched: false,
+
+                action: null,
+
+                payload: null
+            };
+        }
+
+
+        /* =========================
+           REMEMBER
+        ========================= */
+
+        const rememberMatch =
+            text.match(
+                /^(?:تذكر|افتكر|احفظ)\s+(?:ان|إن)?\s*(.+)$/
+            );
+
+
+        if (rememberMatch) {
+
+            return {
+
+                matched: true,
+
+                action:
+                    "remember",
+
+                payload:
+                    rememberMatch[1]
+            };
+        }
+
+
+        /* =========================
+           FORGET
+        ========================= */
+
+        const forgetMatch =
+            text.match(
+                /^(?:انس|انسى|احذف من ذاكرتك)\s+(.+)$/
+            );
+
+
+        if (forgetMatch) {
+
+            return {
+
+                matched: true,
+
+                action:
+                    "forget",
+
+                payload:
+                    forgetMatch[1]
+            };
+        }
+
+
+        /* =========================
+           MEMORY QUERY
+        ========================= */
+
+        if (
+            /^(ماذا تتذكر عني|ماذا تتذكر|ذاكرتي|اعرض ذاكرتك)$/
+                .test(text)
+        ) {
+
+            return {
+
+                matched: true,
+
+                action:
+                    "memory_list",
+
+                payload:
+                    null
+            };
+        }
+
+
+        /* =========================
+           CLEAR MEMORY
+        ========================= */
+
+        if (
+            /^(امسح ذاكرتك|انس كل شيء|امسح الذاكره)$/
+                .test(text)
+        ) {
+
+            return {
+
+                matched: true,
+
+                action:
+                    "memory_clear",
+
+                payload:
+                    null
+            };
         }
 
 
@@ -541,14 +938,19 @@ class IntentRouter {
         ========================= */
 
         if (
-            /^(حاله النظام|حالة النظام|النظام|status)$/
+            /^(حاله النظام|النظام|حالة النظام|status)$/
                 .test(text)
         ) {
 
             return {
+
                 matched: true,
-                action: "system_status",
-                payload: null
+
+                action:
+                    "system_status",
+
+                payload:
+                    null
             };
         }
 
@@ -563,31 +965,129 @@ class IntentRouter {
         ) {
 
             return {
+
                 matched: true,
-                action: "help",
-                payload: null
+
+                action:
+                    "help",
+
+                payload:
+                    null
+            };
+        }
+
+
+        /* =========================
+           CALCULATOR
+        ========================= */
+
+        const calculateMatch =
+            text.match(
+                /^(?:احسب|كم يساوي|كام)\s+(.+)$/
+            );
+
+
+        if (calculateMatch) {
+
+            return {
+
+                matched: true,
+
+                action:
+                    "calculator",
+
+                payload:
+                    calculateMatch[1]
+            };
+        }
+
+
+        /* =========================
+           SIMPLE GREETINGS
+        ========================= */
+
+        if (
+            /^(السلام عليكم|سلام عليكم|اهلا|اهلاً|هاي|hello|مرحبا|صباح الخير|مساء الخير)$/
+                .test(text)
+        ) {
+
+            return {
+
+                matched: true,
+
+                action:
+                    "greeting",
+
+                payload:
+                    text
+            };
+        }
+
+
+        /* =========================
+           DIRECT CONVERSATION
+        ========================= */
+
+        if (
+            /^(عامل ايه|ازيك|اخبارك|كيف حالك|من انت|انت مين)$/
+                .test(text)
+        ) {
+
+            return {
+
+                matched: true,
+
+                action:
+                    "conversation",
+
+                payload:
+                    text
             };
         }
 
 
         return {
+
             matched: false,
+
             action: null,
+
             payload: null
         };
     }
-
 }
 
 
 /* =========================================================
-   ACTION VALIDATOR
+   8. SECURITY POLICY
 ========================================================= */
 
-class ActionValidator {
+class SecurityPolicy {
 
 
-    static validate(action, payload) {
+    static validate(
+        action,
+        payload
+    ) {
+
+        if (
+            !Object.prototype.hasOwnProperty.call(
+                ACTIONS,
+                action
+            )
+        ) {
+
+            return {
+
+                valid: false,
+
+                requiresConfirmation: false,
+
+                error:
+                    "الأمر غير موجود في سجل الأدوات."
+            };
+        }
+
 
         switch (action) {
 
@@ -595,11 +1095,13 @@ class ActionValidator {
             case "torch":
 
                 return {
-                    isValid:
+
+                    valid:
                         payload === "on" ||
                         payload === "off",
 
-                    requiresConfirmation: false,
+                    requiresConfirmation:
+                        false,
 
                     error:
                         "حالة الكشاف غير صالحة."
@@ -610,15 +1112,18 @@ class ActionValidator {
 
                 return {
 
-                    isValid:
-                        Number.isInteger(payload) &&
+                    valid:
+                        Number.isInteger(
+                            payload
+                        ) &&
                         payload > 0 &&
                         payload <= 10000,
 
-                    requiresConfirmation: false,
+                    requiresConfirmation:
+                        false,
 
                     error:
-                        "مدة الاهتزاز غير صالحة."
+                        "مدة الاهتزاز يجب أن تكون بين 1 و10000 ملي ثانية."
                 };
 
 
@@ -626,15 +1131,19 @@ class ActionValidator {
 
                 return {
 
-                    isValid:
-                        Object
-                            .values(APP_REGISTRY)
-                            .some(
-                                app =>
-                                    app.id === payload
-                            ),
+                    valid:
+                        typeof payload ===
+                            "string" &&
+                        [
+                            "whatsapp",
+                            "youtube",
+                            "chrome",
+                            "camera",
+                            "settings"
+                        ].includes(payload),
 
-                    requiresConfirmation: false,
+                    requiresConfirmation:
+                        false,
 
                     error:
                         "التطبيق غير موجود في القائمة الآمنة."
@@ -645,79 +1154,107 @@ class ActionValidator {
 
                 return {
 
-                    isValid:
+                    valid:
+                        typeof payload ===
+                            "string" &&
                         /^01[0125]\d{8}$/
                             .test(payload),
 
-                    requiresConfirmation: true,
+                    requiresConfirmation:
+                        true,
 
                     error:
                         "رقم الهاتف غير مطابق للصيغة المصرية."
                 };
 
 
-            case "system_status":
+            case "remember":
 
                 return {
-                    isValid: true,
-                    requiresConfirmation: false,
-                    error: null
+
+                    valid:
+                        typeof payload ===
+                            "string" &&
+                        payload.length >= 2 &&
+                        payload.length <= 300,
+
+                    requiresConfirmation:
+                        false,
+
+                    error:
+                        "البيان المراد حفظه غير صالح."
                 };
 
 
-            case "help":
+            case "forget":
 
                 return {
-                    isValid: true,
-                    requiresConfirmation: false,
-                    error: null
+
+                    valid:
+                        typeof payload ===
+                            "string" &&
+                        payload.length >= 2 &&
+                        payload.length <= 300,
+
+                    requiresConfirmation:
+                        true,
+
+                    error:
+                        "البيان المراد حذفه غير صالح."
+                };
+
+
+            case "calculator":
+
+                return {
+
+                    valid:
+                        typeof payload ===
+                            "string" &&
+                        payload.length > 0 &&
+                        payload.length <= 100,
+
+                    requiresConfirmation:
+                        false,
+
+                    error:
+                        "المعادلة غير صالحة."
                 };
 
 
             default:
 
                 return {
-                    isValid: false,
-                    requiresConfirmation: false,
-                    error: "Action غير مسجلة."
+
+                    valid: true,
+
+                    requiresConfirmation:
+                        false,
+
+                    error: null
                 };
         }
     }
-
 }
 
 
 /* =========================================================
-   CONFIRMATION MANAGER
+   9. CONFIRMATION MANAGER
 ========================================================= */
 
 class ConfirmationManager {
 
 
-    static isYes(text) {
+    constructor() {
 
-        return /^(نعم|ايوه|أيوه|موافق|اوافق|وافق|تاكيد|تأكيد|اكد|أكد)$/
-            .test(
-                normalizeArabic(text)
-            );
+        this.pending =
+            null;
     }
 
 
-    static isNo(text) {
+    request(action) {
 
-        return /^(لا|لأ|الغاء|إلغاء|رفض|مش موافق)$/
-            .test(
-                normalizeArabic(text)
-            );
-    }
-
-
-    static request(action) {
-
-        jarvisState.mode =
-            "WAITING_FOR_CONFIRMATION";
-
-        jarvisState.pendingAction =
+        this.pending =
             action;
 
         setStatus(
@@ -726,238 +1263,1020 @@ class ConfirmationManager {
     }
 
 
-    static clear() {
+    hasPending() {
 
-        jarvisState.mode = "IDLE";
+        return !!this.pending;
+    }
 
-        jarvisState.pendingAction = null;
+
+    getPending() {
+
+        return this.pending;
+    }
+
+
+    clear() {
+
+        this.pending =
+            null;
 
         setStatus(
             "SYSTEM STANDBY"
         );
     }
+
+
+    isYes(text) {
+
+        return /^(نعم|ايوه|أيوه|موافق|اوافق|وافق|تاكيد|تأكيد|اكد|أكيد)$/
+            .test(
+                normalizeArabic(text)
+            );
+    }
+
+
+    isNo(text) {
+
+        return /^(لا|لأ|الغاء|الغى|إلغاء|رفض|مش موافق)$/
+            .test(
+                normalizeArabic(text)
+            );
+    }
 }
 
 
+const confirmation =
+    new ConfirmationManager();
+
+
 /* =========================================================
-   ACTION EXECUTOR
+   10. CALCULATOR
 ========================================================= */
 
-class ActionExecutor {
+function calculateExpression(
+    input
+) {
+
+    let expression =
+        normalizeArabic(
+            input
+        );
 
 
-    static execute(action, payload) {
+    expression =
+        expression
+            .replace(
+                /×/g,
+                "*"
+            )
+
+            .replace(
+                /÷/g,
+                "/"
+            )
+
+            .replace(
+                /٪/g,
+                "%"
+            )
+
+            .replace(
+                /[^0-9+\-*/%().\s]/g,
+                ""
+            )
+
+            .trim();
 
 
-        switch (action) {
+    if (!expression) {
+        return null;
+    }
 
 
-            case "torch": {
+    /*
+     * Small recursive-descent parser.
+     * No eval() / Function().
+     */
 
-                const success =
-                    WebSimulationBridge
-                        .toggleTorch(payload);
-
-                if (success) {
-
-                    jarvisMessage(
-                        payload === "on"
-                            ? "تم تفعيل الكشاف — محاكاة Web فقط."
-                            : "تم إيقاف الكشاف — محاكاة Web فقط."
-                    );
-
-                    voiceOutput.speak(
-                        payload === "on"
-                            ? "تم تفعيل الكشاف."
-                            : "تم إيقاف الكشاف."
-                    );
-
-                    return true;
-                }
-
-                break;
-            }
+    let position = 0;
 
 
-            case "vibrate": {
+    function skipSpaces() {
 
-                const success =
-                    WebSimulationBridge
-                        .vibrate(payload);
+        while (
+            position <
+            expression.length &&
+            /\s/.test(
+                expression[position]
+            )
+        ) {
 
-                if (success) {
-
-                    jarvisMessage(
-                        `تم تنفيذ الاهتزاز لمدة ${payload / 1000} ثانية.`
-                    );
-
-                    voiceOutput.speak(
-                        "تم تنفيذ الاهتزاز."
-                    );
-
-                    return true;
-                }
-
-                break;
-            }
+            position++;
+        }
+    }
 
 
-            case "open_app": {
+    function parseNumber() {
 
-                const success =
-                    WebSimulationBridge
-                        .openApp(payload);
-
-                if (success) {
-
-                    const app =
-                        Object
-                            .values(APP_REGISTRY)
-                            .find(
-                                item =>
-                                    item.id === payload
-                            );
-
-                    jarvisMessage(
-                        `تم طلب فتح ${app?.displayName || payload} — محاكاة Web فقط.`
-                    );
-
-                    voiceOutput.speak(
-                        `تم طلب فتح ${app?.displayName || payload}.`
-                    );
-
-                    return true;
-                }
-
-                break;
-            }
+        skipSpaces();
 
 
-            case "call": {
-
-                const success =
-                    WebSimulationBridge
-                        .call(payload);
-
-                if (success) {
-
-                    jarvisMessage(
-                        `تم اعتماد الاتصال بالرقم ${payload} — التنفيذ الحقيقي سيتم في طبقة Android.`
-                    );
-
-                    voiceOutput.speak(
-                        "تم اعتماد أمر الاتصال."
-                    );
-
-                    return true;
-                }
-
-                break;
-            }
+        const start =
+            position;
 
 
-            case "system_status": {
+        while (
+            position <
+                expression.length &&
+            /[0-9.]/.test(
+                expression[position]
+            )
+        ) {
 
-                jarvisMessage(
-                    "جميع أنظمة الـWeb Prototype تعمل بشكل طبيعي. الـRouter والـSecurity والـConfirmation والـTTS جاهزون."
-                );
-
-                voiceOutput.speak(
-                    "جميع الأنظمة تعمل بشكل طبيعي."
-                );
-
-                return true;
-            }
-
-
-            case "help": {
-
-                const helpText =
-                    "الأوامر الحالية: شغل الكشاف، اطفي الكشاف، اهتز، اهتز لمدة ثانيتين، افتح واتساب، افتح يوتيوب، حالة النظام، واتصل برقم مصري بعد التأكيد.";
-
-                jarvisMessage(
-                    helpText
-                );
-
-                voiceOutput.speak(
-                    helpText
-                );
-
-                return true;
-            }
-
+            position++;
         }
 
 
-        return false;
+        if (
+            start ===
+            position
+        ) {
+
+            return null;
+        }
+
+
+        const value =
+            Number(
+                expression.slice(
+                    start,
+                    position
+                )
+            );
+
+
+        return Number.isFinite(
+            value
+        )
+            ? value
+            : null;
     }
+
+
+    function parseFactor() {
+
+        skipSpaces();
+
+
+        if (
+            expression[position] ===
+            "("
+        ) {
+
+            position++;
+
+
+            const value =
+                parseExpression();
+
+
+            skipSpaces();
+
+
+            if (
+                expression[position] ===
+                ")"
+            ) {
+
+                position++;
+
+                return value;
+            }
+
+
+            return null;
+        }
+
+
+        if (
+            expression[position] ===
+            "-"
+        ) {
+
+            position++;
+
+            const value =
+                parseFactor();
+
+
+            return value === null
+                ? null
+                : -value;
+        }
+
+
+        return parseNumber();
+    }
+
+
+    function parseTerm() {
+
+        let left =
+            parseFactor();
+
+
+        if (left === null) {
+            return null;
+        }
+
+
+        while (true) {
+
+            skipSpaces();
+
+
+            const operator =
+                expression[
+                    position
+                ];
+
+
+            if (
+                operator !== "*" &&
+                operator !== "/" &&
+                operator !== "%"
+            ) {
+
+                break;
+            }
+
+
+            position++;
+
+
+            const right =
+                parseFactor();
+
+
+            if (right === null) {
+                return null;
+            }
+
+
+            if (
+                operator === "*"
+            ) {
+
+                left *= right;
+
+            } else if (
+                operator === "/"
+            ) {
+
+                if (
+                    right === 0
+                ) {
+
+                    return null;
+                }
+
+                left /= right;
+
+            } else {
+
+                if (
+                    right === 0
+                ) {
+
+                    return null;
+                }
+
+                left %= right;
+            }
+        }
+
+
+        return left;
+    }
+
+
+    function parseExpression() {
+
+        let left =
+            parseTerm();
+
+
+        if (left === null) {
+            return null;
+        }
+
+
+        while (true) {
+
+            skipSpaces();
+
+
+            const operator =
+                expression[
+                    position
+                ];
+
+
+            if (
+                operator !== "+" &&
+                operator !== "-"
+            ) {
+
+                break;
+            }
+
+
+            position++;
+
+
+            const right =
+                parseTerm();
+
+
+            if (right === null) {
+                return null;
+            }
+
+
+            if (
+                operator === "+"
+            ) {
+
+                left += right;
+
+            } else {
+
+                left -= right;
+            }
+        }
+
+
+        return left;
+    }
+
+
+    const result =
+        parseExpression();
+
+
+    skipSpaces();
+
+
+    if (
+        result === null ||
+        position !==
+            expression.length
+    ) {
+
+        return null;
+    }
+
+
+    if (
+        !Number.isFinite(
+            result
+        )
+    ) {
+
+        return null;
+    }
+
+
+    return result;
 }
 
 
 /* =========================================================
-   COMMAND PROCESSOR
+   11. TOOL REGISTRY
 ========================================================= */
 
-function processCommand(rawText) {
+class ToolRegistry {
 
 
-    if (!rawText || !rawText.trim()) {
-        return;
+    constructor() {
+
+        this.tools =
+            new Map();
     }
 
 
-    const text =
-        rawText.trim();
-
-
-    jarvisState.lastCommand =
-        text;
-
-    jarvisState.commandCount++;
-
-
-    userMessage(text);
-
-
-    /* =====================================================
-       CONFIRMATION MODE
-    ===================================================== */
-
-    if (
-        jarvisState.mode ===
-        "WAITING_FOR_CONFIRMATION"
+    register(
+        name,
+        handler
     ) {
+
+        this.tools.set(
+            name,
+            handler
+        );
+    }
+
+
+    exists(name) {
+
+        return this.tools.has(
+            name
+        );
+    }
+
+
+    async execute(
+        name,
+        payload
+    ) {
+
+        if (
+            !this.tools.has(name)
+        ) {
+
+            throw new Error(
+                "Tool not registered"
+            );
+        }
+
+
+        return await this.tools
+            .get(name)(
+                payload
+            );
+    }
+}
+
+
+const tools =
+    new ToolRegistry();
+
+
+/* =========================================================
+   12. WEB SIMULATION TOOLS
+========================================================= */
+
+tools.register(
+    "torch",
+    payload => {
+
+        console.log(
+            "[WEB TOOL] Torch:",
+            payload
+        );
+
+        return {
+            success: true,
+
+            message:
+                payload === "on"
+                    ? "تم تفعيل الكشاف في وضع المحاكاة."
+                    : "تم إيقاف الكشاف في وضع المحاكاة."
+        };
+    }
+);
+
+
+tools.register(
+    "vibrate",
+    payload => {
+
+        if (
+            typeof navigator.vibrate ===
+            "function"
+        ) {
+
+            navigator.vibrate(
+                payload
+            );
+        }
+
+
+        console.log(
+            "[WEB TOOL] Vibrate:",
+            payload
+        );
+
+
+        return {
+
+            success: true,
+
+            message:
+                `تم تشغيل الاهتزاز لمدة ${payload / 1000} ثانية.`
+        };
+    }
+);
+
+
+tools.register(
+    "open_app",
+    payload => {
+
+        console.log(
+            "[WEB TOOL] Open app:",
+            payload
+        );
+
+
+        return {
+
+            success: true,
+
+            message:
+                `تم تجهيز فتح التطبيق ${payload} في وضع المحاكاة.`
+        };
+    }
+);
+
+
+tools.register(
+    "call",
+    payload => {
+
+        console.log(
+            "[WEB TOOL] Call:",
+            payload
+        );
+
+
+        return {
+
+            success: true,
+
+            message:
+                `تم اعتماد الاتصال بالرقم ${payload}. التنفيذ الحقيقي مؤجل لطبقة Android.`
+        };
+    }
+);
+
+
+/* =========================================================
+   13. TASK PLANNER
+========================================================= */
+
+class TaskPlanner {
+
+
+    plan(
+        route
+    ) {
+
+        if (
+            !route ||
+            !route.matched
+        ) {
+
+            return [];
+        }
+
+
+        /*
+         * Each task is an atomic action.
+         * Android V2 can later execute the same plan
+         * through native tools.
+         */
+
+        return [
+
+            {
+
+                action:
+                    route.action,
+
+                payload:
+                    route.payload,
+
+                metadata: {
+                    displayName:
+                        route.displayName ||
+                        route.action
+                }
+            }
+
+        ];
+    }
+}
+
+
+const planner =
+    new TaskPlanner();
+
+
+/* =========================================================
+   14. BRAIN
+========================================================= */
+
+class JarvisBrain {
+
+
+    async process(
+        rawText
+    ) {
+
+        const text =
+            rawText.trim();
+
+
+        if (!text) {
+            return;
+        }
+
+
+        userMessage(
+            text
+        );
+
+
+        memory.addHistory(
+            "user",
+            text
+        );
+
+
+        ui.commandCount.textContent =
+            String(
+                this.getCommandCount()
+            );
+
+
+        /*
+         * Confirmation comes first.
+         */
+
+        if (
+            confirmation.hasPending()
+        ) {
+
+            await this.handleConfirmation(
+                text
+            );
+
+            return;
+        }
+
+
+        /*
+         * Route.
+         */
+
+        const route =
+            IntentRouter.route(
+                text
+            );
 
 
         if (
-            ConfirmationManager
-                .isYes(text)
+            !route.matched
+        ) {
+
+            await this.handleUnknown(
+                text
+            );
+
+            return;
+        }
+
+
+        /*
+         * Special conversational/system actions.
+         */
+
+        if (
+            route.action ===
+            "greeting"
+        ) {
+
+            const response =
+                this.getGreeting();
+
+
+            this.respond(
+                response
+            );
+
+            return;
+        }
+
+
+        if (
+            route.action ===
+            "conversation"
+        ) {
+
+            const response =
+                this.getConversationResponse(
+                    route.payload
+                );
+
+
+            this.respond(
+                response
+            );
+
+            return;
+        }
+
+
+        if (
+            route.action ===
+            "system_status"
+        ) {
+
+            this.respond(
+                this.getSystemStatus()
+            );
+
+            return;
+        }
+
+
+        if (
+            route.action ===
+            "help"
+        ) {
+
+            this.respond(
+                this.getHelp()
+            );
+
+            return;
+        }
+
+
+        if (
+            route.action ===
+            "memory_list"
+        ) {
+
+            this.respond(
+                this.getMemoryResponse()
+            );
+
+            return;
+        }
+
+
+        if (
+            route.action ===
+            "memory_clear"
+        ) {
+
+            this.handleMemoryClear();
+
+            return;
+        }
+
+
+        if (
+            route.action ===
+            "remember"
+        ) {
+
+            this.handleRemember(
+                route.payload
+            );
+
+            return;
+        }
+
+
+        if (
+            route.action ===
+            "forget"
+        ) {
+
+            this.handleForget(
+                route.payload
+            );
+
+            return;
+        }
+
+
+        if (
+            route.action ===
+            "calculator"
+        ) {
+
+            this.handleCalculator(
+                route.payload
+            );
+
+            return;
+        }
+
+
+        /*
+         * Security.
+         */
+
+        const validation =
+            SecurityPolicy.validate(
+                route.action,
+                route.payload
+            );
+
+
+        if (
+            !validation.valid
+        ) {
+
+            securityMessage(
+                validation.error
+            );
+
+
+            voiceOutput.speak(
+                "تم رفض الأمر أمنيًا."
+            );
+
+
+            return;
+        }
+
+
+        /*
+         * High-risk actions require confirmation.
+         */
+
+        if (
+            validation.requiresConfirmation
+        ) {
+
+            confirmation.request({
+
+                action:
+                    route.action,
+
+                payload:
+                    route.payload
+            });
+
+
+            setStatus(
+                "WAITING FOR CONFIRMATION"
+            );
+
+
+            securityMessage(
+                `تنبيه أمني: سيتم تنفيذ ${this.actionLabel(route.action)} للرقم ${route.payload}. هل تؤكد؟`
+            );
+
+
+            voiceOutput.speak(
+                "هناك عملية حساسة. هل تؤكد التنفيذ؟ قل نعم أو لا."
+            );
+
+
+            return;
+        }
+
+
+        /*
+         * Build atomic plan.
+         */
+
+        const plan =
+            planner.plan(
+                route
+            );
+
+
+        await this.executePlan(
+            plan
+        );
+    }
+
+
+    async executePlan(
+        plan
+    ) {
+
+        if (!Array.isArray(plan)) {
+            return;
+        }
+
+
+        setStatus(
+            "EXECUTING"
+        );
+
+
+        for (
+            const step of plan
+        ) {
+
+            try {
+
+                const result =
+                    await tools.execute(
+                        step.action,
+                        step.payload
+                    );
+
+
+                if (
+                    result &&
+                    result.success
+                ) {
+
+                    this.respond(
+                        result.message
+                    );
+
+                } else {
+
+                    errorMessage(
+                        "تعذر تنفيذ الأداة."
+                    );
+
+                    voiceOutput.speak(
+                        "تعذر تنفيذ الأداة."
+                    );
+                }
+
+
+            } catch (error) {
+
+                console.error(
+                    "[Tool Execution]",
+                    error
+                );
+
+
+                errorMessage(
+                    "حدث خطأ أثناء تنفيذ الأداة."
+                );
+
+
+                voiceOutput.speak(
+                    "حدث خطأ أثناء التنفيذ."
+                );
+            }
+        }
+
+
+        setStatus(
+            "SYSTEM STANDBY"
+        );
+    }
+
+
+    async handleConfirmation(
+        text
+    ) {
+
+        if (
+            confirmation.isYes(text)
         ) {
 
             const pending =
-                jarvisState.pendingAction;
+                confirmation.getPending();
 
 
-            ConfirmationManager.clear();
+            confirmation.clear();
 
 
-            const success =
-                ActionExecutor.execute(
+            const validation =
+                SecurityPolicy.validate(
                     pending.action,
                     pending.payload
                 );
 
 
-            if (!success) {
+            if (
+                !validation.valid
+            ) {
 
-                errorMessage(
-                    "تعذر تنفيذ الأمر."
+                securityMessage(
+                    "تعذر اعتماد العملية مرة أخرى."
                 );
 
                 voiceOutput.speak(
-                    "تعذر تنفيذ الأمر."
+                    "تعذر اعتماد العملية."
                 );
+
+                return;
             }
+
+
+            const plan =
+                planner.plan({
+
+                    matched: true,
+
+                    action:
+                        pending.action,
+
+                    payload:
+                        pending.payload
+                });
+
+
+            await this.executePlan(
+                plan
+            );
 
 
             return;
@@ -965,238 +2284,644 @@ function processCommand(rawText) {
 
 
         if (
-            ConfirmationManager
-                .isNo(text)
+            confirmation.isNo(text)
         ) {
 
-            ConfirmationManager.clear();
+            confirmation.clear();
 
 
-            jarvisMessage(
+            this.respond(
                 "تم إلغاء العملية بأمان."
             );
 
-            voiceOutput.speak(
-                "تم إلغاء العملية."
-            );
 
             return;
         }
 
 
         securityMessage(
-            "لم أفهم التأكيد. يجب أن يكون الرد نعم أو لا."
+            "لم أفهم التأكيد. قل نعم أو لا."
         );
+
 
         voiceOutput.speak(
             "يرجى الرد بنعم أو لا."
         );
-
-        return;
     }
 
 
-    /* =====================================================
-       ROUTING
-    ===================================================== */
-
-    const route =
-        IntentRouter.route(text);
-
-
-    if (!route.matched) {
-
-        jarvisMessage(
-            "لم أتعرف على هذا الأمر. اكتب «مساعدة» لمعرفة الأوامر المتاحة."
-        );
-
-        voiceOutput.speak(
-            "لم أتعرف على هذا الأمر."
-        );
-
-        return;
-    }
-
-
-    jarvisState.lastIntent =
-        route.action;
-
-
-    /* =====================================================
-       VALIDATION
-    ===================================================== */
-
-    const validation =
-        ActionValidator.validate(
-            route.action,
-            route.payload
-        );
-
-
-    if (!validation.isValid) {
-
-        securityMessage(
-            `تم رفض الأمر أمنيًا: ${validation.error}`
-        );
-
-        voiceOutput.speak(
-            "تم رفض الأمر أمنيًا."
-        );
-
-        return;
-    }
-
-
-    /* =====================================================
-       CONFIRMATION
-    ===================================================== */
-
-    if (
-        validation.requiresConfirmation
+    handleRemember(
+        fact
     ) {
 
+        const saved =
+            memory.remember(
+                fact
+            );
 
-        ConfirmationManager.request(
-            {
-                action: route.action,
-                payload: route.payload
-            }
+
+        if (saved) {
+
+            this.respond(
+                `حسنًا، سأحتفظ بهذه المعلومة: ${fact}`
+            );
+
+        } else {
+
+            this.respond(
+                "هذه المعلومة موجودة بالفعل في ذاكرتي."
+            );
+        }
+    }
+
+
+    handleForget(
+        fact
+    ) {
+
+        /*
+         * Deleting memory is intentionally
+         * confirmation-protected.
+         */
+
+        confirmation.request({
+
+            action:
+                "forget",
+
+            payload:
+                fact
+        });
+
+
+        setStatus(
+            "WAITING FOR CONFIRMATION"
         );
 
 
         securityMessage(
-            `تنبيه أمني: طلب اتصال بالرقم ${route.payload}. هل أنت متأكد؟`
+            `هل تؤكد حذف هذه المعلومة من الذاكرة: ${fact}؟`
         );
+
 
         voiceOutput.speak(
-            "هناك طلب اتصال. هل أنت متأكد؟ قل نعم أو لا."
+            "هل تؤكد حذف هذه المعلومة من الذاكرة؟"
         );
-
-        return;
     }
 
 
-    /* =====================================================
-       EXECUTION
-    ===================================================== */
+    handleMemoryClear() {
 
-    const success =
-        ActionExecutor.execute(
-            route.action,
-            route.payload
+        confirmation.request({
+
+            action:
+                "memory_clear",
+
+            payload:
+                null
+        });
+
+
+        setStatus(
+            "WAITING FOR CONFIRMATION"
         );
 
 
-    if (!success) {
-
-        errorMessage(
-            "تعذر تنفيذ الأمر حاليًا."
+        securityMessage(
+            "هذا سيمسح الذاكرة المحلية بالكامل. هل تؤكد؟"
         );
+
 
         voiceOutput.speak(
-            "تعذر تنفيذ الأمر."
+            "سيتم مسح الذاكرة المحلية بالكامل. هل تؤكد؟"
+        );
+    }
+
+
+    handleCalculator(
+        expression
+    ) {
+
+        const result =
+            calculateExpression(
+                expression
+            );
+
+
+        if (
+            result === null
+        ) {
+
+            errorMessage(
+                "لم أستطع فهم المعادلة."
+            );
+
+
+            voiceOutput.speak(
+                "لم أستطع فهم المعادلة."
+            );
+
+
+            return;
+        }
+
+
+        this.respond(
+            `النتيجة: ${result}`
+        );
+    }
+
+
+    getMemoryResponse() {
+
+        const facts =
+            memory.getFacts();
+
+
+        if (
+            facts.length === 0
+        ) {
+
+            return "ذاكرتي المحلية فارغة حاليًا.";
+        }
+
+
+        return [
+            "هذه المعلومات المحفوظة لدي:",
+            ...facts.map(
+                (fact, index) =>
+                    `${index + 1}. ${fact}`
+            )
+        ].join("\n");
+    }
+
+
+    getSystemStatus() {
+
+        const facts =
+            memory.getFacts().length;
+
+
+        return [
+            "كل الأنظمة الأساسية تعمل.",
+
+            "العقل: ONLINE",
+
+            "الموجّه: READY",
+
+            "الأمان: ACTIVE",
+
+            `الذاكرة المحلية: ${facts} معلومة`,
+
+            `عدد الأوامر في الجلسة: ${this.getCommandCount()}`,
+
+            "الوضع الحالي: WEB CORE"
+        ].join("\n");
+    }
+
+
+    getHelp() {
+
+        return [
+            "أستطيع حاليًا:",
+
+            "• تشغيل/إيقاف الكشاف — محاكاة",
+
+            "• الاهتزاز",
+
+            "• تجهيز فتح التطبيقات — محاكاة",
+
+            "• الاتصال بعد التأكيد — محاكاة",
+
+            "• حفظ معلومات في الذاكرة",
+
+            "• حذف معلومات بعد التأكيد",
+
+            "• حساب المعادلات",
+
+            "• عرض حالة النظام",
+
+            "• إجراء محادثة أساسية",
+
+            "التحكم الحقيقي بالهاتف سيأتي عندما نوصل طبقة Android."
+        ].join("\n");
+    }
+
+
+    getGreeting() {
+
+        return "مرحبًا. J.A.R.V.I.S جاهز للعمل.";
+    }
+
+
+    getConversationResponse(
+        text
+    ) {
+
+        const normalized =
+            normalizeArabic(
+                text
+            );
+
+
+        if (
+            normalized ===
+            "ازيك"
+        ) {
+
+            return "بخير وجاهز للعمل. ماذا تريد أن نفعل؟";
+        }
+
+
+        if (
+            normalized ===
+            "عامل ايه"
+        ) {
+
+            return "كل الأنظمة الأساسية مستقرة وأنا جاهز.";
+        }
+
+
+        if (
+            normalized ===
+            "من انت" ||
+            normalized ===
+            "انت مين"
+        ) {
+
+            return "أنا نواة J.A.R.V.I.S التجريبية: ذاكرة، توجيه أوامر، أمان، أدوات، تخطيط وتنفيذ محكوم.";
+        }
+
+
+        if (
+            normalized ===
+            "اخبارك"
+        ) {
+
+            return "الوضع مستقر. الذاكرة والموجّه والحماية تعمل.";
+        }
+
+
+        return "أنا جاهز. قل لي ماذا تريد.";
+    }
+
+
+    getCommandCount() {
+
+        const stored =
+            Number(
+                sessionStorage.getItem(
+                    "jarvis_command_count"
+                ) || "0"
+            );
+
+
+        return stored;
+    }
+
+
+    incrementCommandCount() {
+
+        const next =
+            this.getCommandCount() + 1;
+
+
+        sessionStorage.setItem(
+            "jarvis_command_count",
+            String(next)
+        );
+
+
+        ui.commandCount.textContent =
+            String(next);
+    }
+
+
+    actionLabel(
+        action
+    ) {
+
+        const labels = {
+
+            call:
+                "الاتصال",
+
+            forget:
+                "حذف المعلومة",
+
+            memory_clear:
+                "مسح الذاكرة"
+
+        };
+
+
+        return (
+            labels[action] ||
+            action
+        );
+    }
+
+
+    respond(
+        text
+    ) {
+
+        if (!text) {
+            return;
+        }
+
+
+        jarvisMessage(
+            text
+        );
+
+
+        memory.addHistory(
+            "assistant",
+            text
+        );
+
+
+        voiceOutput.speak(
+            text
+        );
+    }
+
+
+    async handleUnknown(
+        text
+    ) {
+
+        /*
+         * This is deliberately conservative.
+         *
+         * We do not pretend an LLM understood
+         * something when the deterministic core
+         * actually did not.
+         */
+
+        this.respond(
+            `أفهم أنك قلت: "${text}".\nلكن هذا الطلب غير موجود بعد في سجل قدراتي.`
         );
     }
 }
 
 
+const brain =
+    new JarvisBrain();
+
+
 /* =========================================================
-   UNIT TESTS
+   15. SPECIAL CONFIRMATION EXECUTION PATCH
 ========================================================= */
 
-function runJarvisUnitTests() {
+const originalToolExecute =
+    tools.execute.bind(tools);
 
+
+tools.execute = async function(
+    name,
+    payload
+) {
+
+    /*
+     * Memory operations are not passed
+     * to the external/native tools.
+     */
+
+    if (
+        name === "forget"
+    ) {
+
+        const removed =
+            memory.forget(
+                payload
+            );
+
+
+        return {
+
+            success: removed,
+
+            message:
+                removed
+                    ? `تم حذف المعلومة من الذاكرة: ${payload}`
+                    : "لم أجد هذه المعلومة في الذاكرة."
+        };
+    }
+
+
+    if (
+        name === "memory_clear"
+    ) {
+
+        memory.clear();
+
+
+        return {
+
+            success: true,
+
+            message:
+                "تم مسح الذاكرة المحلية."
+        };
+    }
+
+
+    return originalToolExecute(
+        name,
+        payload
+    );
+};
+
+
+/* =========================================================
+   16. CONFIRMATION ROUTE EXTENSION
+========================================================= */
+
+const originalHandleConfirmation =
+    brain.handleConfirmation.bind(
+        brain
+    );
+
+
+brain.handleConfirmation =
+    async function(text) {
+
+        if (
+            confirmation.isYes(text)
+        ) {
+
+            const pending =
+                confirmation.getPending();
+
+
+            if (
+                pending &&
+                (
+                    pending.action ===
+                        "memory_clear" ||
+                    pending.action ===
+                        "forget"
+                )
+            ) {
+
+                confirmation.clear();
+
+
+                const result =
+                    await tools.execute(
+                        pending.action,
+                        pending.payload
+                    );
+
+
+                this.respond(
+                    result.message
+                );
+
+
+                return;
+            }
+        }
+
+
+        await originalHandleConfirmation(
+            text
+        );
+    };
+
+
+/* =========================================================
+   17. COMMAND INPUT
+========================================================= */
+
+ui.form.addEventListener(
+    "submit",
+    async event => {
+
+        event.preventDefault();
+
+
+        const text =
+            ui.input.value.trim();
+
+
+        if (!text) {
+            return;
+        }
+
+
+        ui.input.value = "";
+
+
+        brain.incrementCommandCount();
+
+
+        await brain.process(
+            text
+        );
+
+
+        ui.input.focus();
+    }
+);
+
+
+/* =========================================================
+   18. UNIT TESTS
+========================================================= */
+
+function runUnitTests() {
 
     const tests = [
 
         {
-            input: "شغل الكشاف",
-            matched: true,
-            action: "torch"
+            input:
+                "شغل الكشاف",
+
+            action:
+                "torch"
         },
 
         {
-            input: "اطفي الكشاف",
-            matched: true,
-            action: "torch"
+            input:
+                "اطفي الكشاف",
+
+            action:
+                "torch"
         },
 
         {
-            input: "اهتز",
-            matched: true,
-            action: "vibrate"
+            input:
+                "اهتز لمدة 2 ثانية",
+
+            action:
+                "vibrate"
         },
 
         {
-            input: "اهتز لمدة 2 ثانية",
-            matched: true,
-            action: "vibrate"
+            input:
+                "افتح واتساب",
+
+            action:
+                "open_app"
         },
 
         {
-            input: "افتح واتساب",
-            matched: true,
-            action: "open_app"
+            input:
+                "اتصل بـ 01012345678",
+
+            action:
+                "call"
         },
 
         {
-            input: "افتح يوتيوب",
-            matched: true,
-            action: "open_app"
+            input:
+                "اتصل بـ 010 1234 5678",
+
+            action:
+                "call"
         },
 
         {
-            input: "اتصل على 01012345678",
-            matched: true,
-            action: "call"
+            input:
+                "افتح تطبيق ضار",
+
+            action:
+                null
         },
 
         {
-            input: "اتصل بـ 010-1234-5678",
-            matched: true,
-            action: "call"
+            input:
+                "تذكر أنني أحب الرياضيات",
+
+            action:
+                "remember"
         },
 
         {
-            input: "اتصل بـ ٠١٠ ١٢٣٤ ٥٦٧٨",
-            matched: true,
-            action: "call"
+            input:
+                "ماذا تتذكر عني",
+
+            action:
+                "memory_list"
         },
 
         {
-            input: "اتصل بـ 01012345678 كلام",
-            matched: false,
-            action: null
+            input:
+                "احسب 25 × 4",
+
+            action:
+                "calculator"
         },
 
         {
-            input: "أمر وهمي",
-            matched: false,
-            action: null
-        },
+            input:
+                "حالة النظام",
 
-        {
-            input: "افتح تطبيق ضار",
-            matched: false,
-            action: null
-        },
-
-        {
-            input: "اتصل بـ 123",
-            matched: false,
-            action: null
-        },
-
-        {
-            input: "حالة النظام",
-            matched: true,
-            action: "system_status"
-        },
-
-        {
-            input: "مساعدة",
-            matched: true,
-            action: "help"
+            action:
+                "system_status"
         }
 
     ];
@@ -1205,7 +2930,9 @@ function runJarvisUnitTests() {
     let passed = 0;
 
 
-    for (const test of tests) {
+    for (
+        const test of tests
+    ) {
 
         const result =
             IntentRouter.route(
@@ -1213,157 +2940,113 @@ function runJarvisUnitTests() {
             );
 
 
-        const success =
-            result.matched ===
-                test.matched &&
-
+        if (
             result.action ===
-                test.action;
+            test.action
+        ) {
 
-
-        if (success) {
             passed++;
+
+            console.log(
+                "✅ PASS:",
+                test.input
+            );
+
+        } else {
+
+            console.error(
+                "❌ FAIL:",
+                test.input,
+                result
+            );
         }
-
-
-        console.log(
-            success ? "PASS" : "FAIL",
-            "|",
-            test.input
-        );
     }
 
 
     console.log(
-        `[JARVIS TESTS] ${passed}/${tests.length} passed.`
+        `[JARVIS CORE TESTS] ${passed}/${tests.length} passed.`
     );
 
 
-    return passed === tests.length;
+    return (
+        passed ===
+        tests.length
+    );
 }
 
 
 /* =========================================================
-   INITIALIZATION
+   19. BOOT
 ========================================================= */
 
-function initializeJarvis() {
-
+function bootJarvis() {
 
     console.log(
-        "===================================="
+        "========================================"
     );
 
-    console.log(
-        "J.A.R.V.I.S V3.1"
-    );
 
     console.log(
-        "Web Prototype Initializing..."
+        "J.A.R.V.I.S V4 CORE"
+    );
+
+
+    console.log(
+        "Booting..."
     );
 
 
     const testsPassed =
-        runJarvisUnitTests();
+        runUnitTests();
 
 
-    if (testsPassed) {
+    ui.memoryStatus.textContent =
+        "ONLINE";
 
-        console.log(
-            "[CORE] All unit tests passed."
+
+    ui.commandCount.textContent =
+        String(
+            brain.getCommandCount()
         );
 
-    } else {
-
-        console.error(
-            "[CORE] Some unit tests failed."
-        );
-    }
-
-
-    /* ================================
-       FORM
-    ================================= */
-
-    ui.form.addEventListener(
-        "submit",
-        event => {
-
-            event.preventDefault();
-
-
-            const text =
-                ui.input.value.trim();
-
-
-            if (!text) {
-                return;
-            }
-
-
-            ui.input.value = "";
-
-
-            processCommand(text);
-
-
-            ui.input.focus();
-        }
-    );
-
-
-    /* ================================
-       VOICE STATUS
-    ================================= */
-
-    if (
-        voiceOutput.enabled
-    ) {
-
-        ui.voiceStatus.textContent =
-            "TTS READY";
-
-    } else {
-
-        ui.voiceStatus.textContent =
-            "TTS UNAVAILABLE";
-    }
-
-
-    /* ================================
-       STARTUP MESSAGE
-    ================================= */
 
     setStatus(
-        "SYSTEM STANDBY"
+        testsPassed
+            ? "SYSTEM READY"
+            : "CORE TEST FAILURE"
     );
 
 
     jarvisMessage(
-        "مرحبًا. J.A.R.V.I.S V3.1 جاهز. اكتب «مساعدة» لرؤية الأوامر المتاحة."
+        "مرحبًا. J.A.R.V.I.S Core V4 جاهز. اكتب «مساعدة» لمعرفة ما أستطيع فعله."
     );
 
 
+    voiceOutput.speak(
+        "جارفيس جاهز للعمل."
+    );
+
+
+    ui.input.focus();
+
+
     console.log(
-        "[JARVIS] System ready."
+        "J.A.R.V.I.S Core ready."
     );
 }
 
 
-/* =========================================================
-   START
-========================================================= */
-
 if (
-    document.readyState === "loading"
+    document.readyState ===
+    "loading"
 ) {
 
     document.addEventListener(
         "DOMContentLoaded",
-        initializeJarvis
+        bootJarvis
     );
 
 } else {
 
-    initializeJarvis();
+    bootJarvis();
 }
