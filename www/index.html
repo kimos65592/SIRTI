@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>J.A.R.V.I.S — Brain Lab V5.1</title>
+
+    <style>
+
+        :root {
+            --bg: #070b12;
+            --panel: #0d1420;
+            --panel2: #111b29;
+            --border: #1e3448;
+            --cyan: #00eaff;
+            --cyan-soft: rgba(0, 234, 255, 0.10);
+            --text: #edfaff;
+            --muted: #7e98aa;
+            --green: #3cff9b;
+            --yellow: #ffd166;
+            --red: #ff5268;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background:
+                radial-gradient(
+                    circle at 50% -20%,
+                    rgba(0,234,255,.12),
+                    transparent 45%
+                ),
+                var(--bg);
+
+            color: var(--text);
+
+            font-family:
+                "Segoe UI",
+                Tahoma,
+                Arial,
+                sans-serif;
+
+            min-height: 100vh;
+        }
+
+        header {
+            height: 70px;
+
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+
+            padding: 0 20px;
+
+            background:
+                rgba(13,20,32,.92);
+
+            border-bottom:
+                1px solid var(--border);
+
+            backdrop-filter: blur(12px);
+        }
+
+        .logo {
+            color: var(--cyan);
+
+            font-size: 18px;
+
+            font-weight: 800;
+
+            letter-spacing: 2px;
+
+            text-shadow:
+                0 0 12px
+                rgba(0,234,255,.45);
+        }
+
+        .status {
+            border:
+                1px solid var(--cyan);
+
+            color: var(--cyan);
+
+            padding:
+                7px 13px;
+
+            border-radius: 20px;
+
+            font-size: 12px;
+
+            background:
+                var(--cyan-soft);
+        }
+
+        main {
+            width: min(1100px, 100%);
+
+            margin:
+                auto;
+
+            padding:
+                20px;
+
+            display:
+                grid;
+
+            grid-template-columns:
+                1fr 300px;
+
+            gap: 18px;
+        }
+
+        .panel {
+            background:
+                rgba(13,20,32,.88);
+
+            border:
+                1px solid var(--border);
+
+            border-radius:
+                16px;
+
+            overflow:
+                hidden;
+        }
+
+        .panel-title {
+            padding:
+                13px 16px;
+
+            border-bottom:
+                1px solid var(--border);
+
+            color:
+                var(--cyan);
+
+            font-size:
+                13px;
+
+            font-weight:
+                700;
+        }
+
+        #chat {
+            height:
+                calc(100vh - 190px);
+
+            min-height:
+                450px;
+
+            overflow-y:
+                auto;
+
+            padding:
+                18px;
+
+            display:
+                flex;
+
+            flex-direction:
+                column;
+
+            gap:
+                12px;
+        }
+
+        .message {
+            max-width:
+                82%;
+
+            padding:
+                11px 14px;
+
+            border-radius:
+                13px;
+
+            line-height:
+                1.65;
+
+            font-size:
+                14px;
+
+            white-space:
+                pre-wrap;
+        }
+
+        .user {
+            align-self:
+                flex-start;
+
+            background:
+                #172334;
+
+            border:
+                1px solid #294157;
+        }
+
+        .jarvis {
+            align-self:
+                flex-end;
+
+            background:
+                var(--cyan-soft);
+
+            border:
+                1px solid
+                rgba(0,234,255,.25);
+        }
+
+        .system {
+            align-self:
+                center;
+
+            background:
+                rgba(255,209,102,.07);
+
+            border:
+                1px solid
+                rgba(255,209,102,.2);
+
+            color:
+                var(--yellow);
+
+            font-size:
+                12px;
+        }
+
+        .sender {
+            display:
+                block;
+
+            font-size:
+                10px;
+
+            margin-bottom:
+                4px;
+
+            color:
+                var(--muted);
+        }
+
+        .input-area {
+            display:
+                flex;
+
+            gap:
+                8px;
+
+            padding:
+                12px;
+
+            border-top:
+                1px solid var(--border);
+        }
+
+        #input {
+            flex:
+                1;
+
+            background:
+                var(--panel2);
+
+            color:
+                var(--text);
+
+            border:
+                1px solid var(--border);
+
+            border-radius:
+                10px;
+
+            padding:
+                12px;
+
+            outline:
+                none;
+
+            font-size:
+                14px;
+        }
+
+        #input:focus {
+            border-color:
+                var(--cyan);
+        }
+
+        button {
+            border:
+                none;
+
+            border-radius:
+                10px;
+
+            padding:
+                0 20px;
+
+            background:
+                var(--cyan);
+
+            color:
+                #001015;
+
+            font-weight:
+                800;
+
+            cursor:
+                pointer;
+        }
+
+        button:active {
+            transform:
+                scale(.97);
+        }
+
+        .side {
+            padding:
+                16px;
+        }
+
+        .stat {
+            margin-bottom:
+                14px;
+        }
+
+        .stat-label {
+            color:
+                var(--muted);
+
+            font-size:
+                11px;
+
+            margin-bottom:
+                4px;
+        }
+
+        .stat-value {
+            color:
+                var(--text);
+
+            font-size:
+                13px;
+        }
+
+        .online {
+            color:
+                var(--green);
+        }
+
+        .goal-box {
+            margin-top:
+                18px;
+
+            padding:
+                12px;
+
+            border:
+                1px solid var(--border);
+
+            border-radius:
+                10px;
+        }
+
+        .goal-title {
+            color:
+                var(--cyan);
+
+            font-size:
+                11px;
+
+            margin-bottom:
+                7px;
+        }
+
+        @media (max-width: 800px) {
+
+            main {
+                grid-template-columns:
+                    1fr;
+            }
+
+            .side {
+                display:
+                    none;
+            }
+
+            #chat {
+                height:
+                    calc(100vh - 160px);
+            }
+
+            .logo {
+                font-size:
+                    14px;
+            }
+        }
+
+    </style>
+</head>
+
+<body>
+
+<header>
+
+    <div class="logo">
+        J.A.R.V.I.S // BRAIN LAB V5.1
+    </div>
+
+    <div
+        id="status"
+        class="status"
+    >
+        CONSCIOUS
+    </div>
+
+</header>
+
+
+<main>
+
+    <section class="panel">
+
+        <div class="panel-title">
+            NEURAL INTERFACE
+        </div>
+
+        <div id="chat"></div>
+
+        <form
+            id="command-form"
+            class="input-area"
+        >
+
+            <input
+                id="input"
+                type="text"
+                autocomplete="off"
+                placeholder="تحدث مع JARVIS..."
+            >
+
+            <button type="submit">
+                إرسال
+            </button>
+
+        </form>
+
+    </section>
+
+
+    <aside class="panel side">
+
+        <div class="panel-title">
+            WORLD MODEL
+        </div>
+
+
+        <div class="stat">
+
+            <div class="stat-label">
+                SYSTEM
+            </div>
+
+            <div
+                id="system-state"
+                class="stat-value online"
+            >
+                ONLINE
+            </div>
+
+        </div>
+
+
+        <div class="stat">
+
+            <div class="stat-label">
+                TIME
+            </div>
+
+            <div
+                id="time-state"
+                class="stat-value"
+            >
+                --
+            </div>
+
+        </div>
+
+
+        <div class="stat">
+
+            <div class="stat-label">
+                IDLE
+            </div>
+
+            <div
+                id="idle-state"
+                class="stat-value"
+            >
+                0 sec
+            </div>
+
+        </div>
+
+
+        <div class="stat">
+
+            <div class="stat-label">
+                BATTERY
+            </div>
+
+            <div
+                id="battery-state"
+                class="stat-value"
+            >
+                Unknown
+            </div>
+
+        </div>
+
+
+        <div class="goal-box">
+
+            <div class="goal-title">
+                ACTIVE GOAL
+            </div>
+
+            <div
+                id="goal-state"
+                class="stat-value"
+            >
+                None
+            </div>
+
+        </div>
+
+    </aside>
+
+</main>
+
+
+<script src="app.js"></script>
+
+</body>
+
+</html>
