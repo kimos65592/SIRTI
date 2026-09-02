@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>J.A.R.V.I.S V3.1 — Web Prototype</title>
+
+    <style>
+        :root {
+            --bg: #070b12;
+            --panel: #0d1420;
+            --panel-2: #111b2a;
+            --border: #1d3145;
+            --accent: #00eaff;
+            --accent-soft: rgba(0, 234, 255, 0.10);
+            --text: #edfaff;
+            --muted: #7f95a8;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            background:
+                radial-gradient(
+                    circle at 50% -20%,
+                    rgba(0, 234, 255, 0.10),
+                    transparent 45%
+                ),
+                var(--bg);
+
+            color: var(--text);
+            font-family:
+                "Segoe UI",
+                Tahoma,
+                Arial,
+                sans-serif;
+
+            overflow: hidden;
+        }
+
+        button,
+        input {
+            font: inherit;
+        }
+
+        /* =========================
+           HEADER
+        ========================= */
+
+        header {
+            height: 70px;
+            padding: 0 22px;
+
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+
+            background: rgba(13, 20, 32, 0.95);
+            border-bottom: 1px solid var(--border);
+
+            backdrop-filter: blur(12px);
+        }
+
+        .brand {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .logo {
+            color: var(--accent);
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: 2px;
+
+            text-shadow:
+                0 0 8px rgba(0, 234, 255, 0.6);
+        }
+
+        .version {
+            color: var(--muted);
+            font-size: 11px;
+            letter-spacing: 1px;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+
+            padding: 8px 13px;
+
+            border: 1px solid var(--border);
+            border-radius: 20px;
+
+            background: rgba(0, 234, 255, 0.04);
+
+            font-size: 12px;
+            color: var(--accent);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+
+            border-radius: 50%;
+            background: var(--accent);
+
+            box-shadow:
+                0 0 10px var(--accent);
+        }
+
+        /* =========================
+           MAIN
+        ========================= */
+
+        main {
+            width: 100%;
+            max-width: 900px;
+
+            height: calc(100vh - 70px);
+
+            margin: auto;
+
+            display: flex;
+            flex-direction: column;
+
+            padding: 18px;
+        }
+
+        /* =========================
+           SYSTEM PANEL
+        ========================= */
+
+        .system-panel {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+
+            gap: 10px;
+
+            margin-bottom: 14px;
+        }
+
+        .system-card {
+            padding: 11px 13px;
+
+            background: rgba(13, 20, 32, 0.75);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+        }
+
+        .system-card .label {
+            display: block;
+
+            color: var(--muted);
+            font-size: 10px;
+
+            margin-bottom: 4px;
+        }
+
+        .system-card .value {
+            color: var(--text);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .system-card .online {
+            color: var(--success);
+        }
+
+        /* =========================
+           CHAT
+        ========================= */
+
+        .chat-wrapper {
+            flex: 1;
+
+            min-height: 0;
+
+            background: rgba(13, 20, 32, 0.55);
+
+            border: 1px solid var(--border);
+            border-radius: 14px;
+
+            overflow: hidden;
+
+            display: flex;
+            flex-direction: column;
+        }
+
+        #chat-log {
+            flex: 1;
+
+            overflow-y: auto;
+
+            padding: 18px;
+
+            display: flex;
+            flex-direction: column;
+
+            gap: 12px;
+        }
+
+        #chat-log::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        #chat-log::-webkit-scrollbar-thumb {
+            background: #1e4358;
+            border-radius: 10px;
+        }
+
+        .message {
+            max-width: 82%;
+
+            padding: 11px 14px;
+
+            border-radius: 12px;
+
+            line-height: 1.6;
+            font-size: 14px;
+
+            animation: messageIn 0.2s ease;
+        }
+
+        @keyframes messageIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message .sender {
+            display: block;
+
+            margin-bottom: 3px;
+
+            font-size: 10px;
+            font-weight: 700;
+
+            color: var(--muted);
+        }
+
+        .message.user {
+            align-self: flex-start;
+
+            background: #172333;
+
+            border: 1px solid #263c51;
+
+            border-bottom-right-radius: 3px;
+        }
+
+        .message.jarvis {
+            align-self: flex-end;
+
+            background: var(--accent-soft);
+
+            border: 1px solid rgba(0, 234, 255, 0.22);
+
+            border-bottom-left-radius: 3px;
+        }
+
+        .message.jarvis .sender {
+            color: var(--accent);
+        }
+
+        .message.security {
+            align-self: flex-end;
+
+            background: rgba(245, 158, 11, 0.08);
+
+            border: 1px solid rgba(245, 158, 11, 0.25);
+        }
+
+        .message.security .sender {
+            color: var(--warning);
+        }
+
+        .message.error {
+            align-self: flex-end;
+
+            background: rgba(239, 68, 68, 0.08);
+
+            border: 1px solid rgba(239, 68, 68, 0.25);
+        }
+
+        .message.error .sender {
+            color: var(--danger);
+        }
+
+        /* =========================
+           INPUT
+        ========================= */
+
+        .input-area {
+            padding: 12px;
+
+            background: rgba(7, 11, 18, 0.8);
+
+            border-top: 1px solid var(--border);
+        }
+
+        #command-form {
+            display: flex;
+            gap: 9px;
+        }
+
+        #user-input {
+            flex: 1;
+
+            min-width: 0;
+
+            padding: 12px 14px;
+
+            border-radius: 10px;
+
+            border: 1px solid var(--border);
+
+            background: var(--panel);
+
+            color: var(--text);
+
+            outline: none;
+
+            transition:
+                border-color 0.2s,
+                box-shadow 0.2s;
+        }
+
+        #user-input:focus {
+            border-color: var(--accent);
+
+            box-shadow:
+                0 0 0 2px rgba(0, 234, 255, 0.08);
+        }
+
+        #user-input::placeholder {
+            color: #64788a;
+        }
+
+        .send-btn {
+            width: 85px;
+
+            border: none;
+            border-radius: 10px;
+
+            background: var(--accent);
+
+            color: #00151a;
+
+            font-weight: 800;
+
+            cursor: pointer;
+
+            transition:
+                transform 0.15s,
+                opacity 0.15s;
+        }
+
+        .send-btn:hover {
+            opacity: 0.9;
+        }
+
+        .send-btn:active {
+            transform: scale(0.96);
+        }
+
+        /* =========================
+           MOBILE
+        ========================= */
+
+        @media (max-width: 600px) {
+
+            header {
+                height: 64px;
+                padding: 0 14px;
+            }
+
+            .logo {
+                font-size: 15px;
+            }
+
+            .version {
+                font-size: 9px;
+            }
+
+            .status {
+                padding: 6px 9px;
+                font-size: 10px;
+            }
+
+            main {
+                height: calc(100vh - 64px);
+                padding: 10px;
+            }
+
+            .system-panel {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 6px;
+            }
+
+            .system-card {
+                padding: 8px;
+            }
+
+            .system-card .value {
+                font-size: 11px;
+            }
+
+            .message {
+                max-width: 90%;
+                font-size: 13px;
+            }
+
+            .send-btn {
+                width: 70px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+
+    <div class="brand">
+        <div class="logo">J.A.R.V.I.S</div>
+        <div class="version">V3.1 // WEB PROTOTYPE</div>
+    </div>
+
+    <div class="status">
+        <span class="status-dot"></span>
+        <span id="status-text">SYSTEM STANDBY</span>
+    </div>
+
+</header>
+
+<main>
+
+    <section class="system-panel">
+
+        <div class="system-card">
+            <span class="label">CORE</span>
+            <span class="value online">ONLINE</span>
+        </div>
+
+        <div class="system-card">
+            <span class="label">ROUTER</span>
+            <span class="value online">READY</span>
+        </div>
+
+        <div class="system-card">
+            <span class="label">VOICE</span>
+            <span id="voice-status" class="value">CHECKING...</span>
+        </div>
+
+    </section>
+
+    <section class="chat-wrapper">
+
+        <div id="chat-log"></div>
+
+        <div class="input-area">
+
+            <form id="command-form">
+
+                <input
+                    id="user-input"
+                    type="text"
+                    autocomplete="off"
+                    placeholder="اكتب أمرك إلى J.A.R.V.I.S..."
+                >
+
+                <button
+                    class="send-btn"
+                    type="submit"
+                >
+                    إرسال
+                </button>
+
+            </form>
+
+        </div>
+
+    </section>
+
+</main>
+
+<script src="app.js"></script>
+
+</body>
+</html>
