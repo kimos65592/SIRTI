@@ -2,1066 +2,2254 @@
 
 /*
 =========================================================
-J.A.R.V.I.S — COGNITIVE OS v1.0
-PHASE 1 — WEB COGNITIVE CORE
+ J.A.R.V.I.S — COGNITIVE OS v2
+ MODEL-DRIVEN COGNITIVE CORE
+=========================================================
 
-USER INPUT  : TEXT
-JARVIS      : TEXT + VOICE
+Architecture:
 
-NO MICROPHONE
-NO ANDROID
-NO EXTERNAL API
-NO EXTERNAL DEPENDENCIES
+USER
+ ↓
+UNDERSTANDING MODEL
+ ↓
+WORLD MODEL
+ ↓
+MEMORY
+ ↓
+GOALS
+ ↓
+PLANNER
+ ↓
+DECISION
+ ↓
+ACTION
+ ↓
+OBSERVATION
+ ↓
+REFLECTION
+ ↓
+LEARNING
+*/
 
-This phase builds the cognitive architecture first.
-The "awareness" values are internal engineering state,
-not a claim of literal consciousness.
+const STORAGE_KEY = "JARVIS_COGNITIVE_OS_V2";
+
+const JARVIS = {
+
+    state: {
+
+        system: {
+            status: "online",
+            environment: "web",
+
+            cognitiveState: "idle",
+
+            awareness: 0.82,
+            attention: 0.86,
+
+            confidence: 0.50,
+            uncertainty: 0.50
+        },
+
+        conversation: [],
+
+        memory: [],
+
+        world: {
+            currentContext: null,
+            currentSituation: null,
+            userState: null
+        },
+
+        goal: null,
+
+        plan: null,
+
+        lastUnderstanding: null,
+
+        settings: {
+
+            address: "يا سيدي",
+
+            tone: "calm",
+
+            concise: false,
+
+            formality: 0.65,
+
+            humor: 0.25,
+
+            proactive: true,
+
+            comparePlans: true,
+
+            reviewResults: true,
+
+            voiceRate: 0.95
+        }
+    },
+
+    /*
+    =====================================================
+    STORAGE
+    =====================================================
+    */
+
+    storage: {
+
+        load() {
+
+            try {
+
+                const saved =
+                    JSON.parse(
+                        localStorage.getItem(STORAGE_KEY)
+                    );
+
+                if (!saved) return;
+
+                Object.assign(
+                    JARVIS.state,
+                    saved
+                );
+
+                console.log(
+                    "[MEMORY] State restored."
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "[MEMORY] Load error:",
+                    error
+                );
+            }
+        },
+
+        save() {
+
+            try {
+
+                localStorage.setItem(
+                    STORAGE_KEY,
+                    JSON.stringify(
+                        JARVIS.state
+                    )
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "[MEMORY] Save error:",
+                    error
+                );
+            }
+        }
+    },
+
+    /*
+    =====================================================
+    TEXT NORMALIZATION
+    =====================================================
+    */
+
+    text: {
+
+        normalize(text) {
+
+            return String(text || "")
+
+                .trim()
+
+                .toLowerCase()
+
+                .replace(
+                    /[\u064B-\u065F\u0670]/g,
+                    ""
+                )
+
+                .replace(
+                    /[أإآ]/g,
+                    "ا"
+                )
+
+                .replace(
+                    /ى/g,
+                    "ي"
+                );
+        },
+
+        includes(text, words) {
+
+            const normalized =
+                this.normalize(text);
+
+            return words.some(
+                word =>
+                    normalized.includes(
+                        this.normalize(word)
+                    )
+            );
+        }
+    },
+
+    /*
+    =====================================================
+    CONVERSATION
+    =====================================================
+    */
+
+    conversation: {
+
+        addUser(text) {
+
+            JARVIS.state.conversation.push({
+
+                role: "user",
+
+                text,
+
+                timestamp: Date.now()
+            });
+
+            this.limit();
+        },
+
+        addJarvis(text) {
+
+            JARVIS.state.conversation.push({
+
+                role: "jarvis",
+
+                text,
+
+                timestamp: Date.now()
+            });
+
+            this.limit();
+        },
+
+        limit() {
+
+            if (
+                JARVIS.state.conversation.length
+                > 100
+            ) {
+
+                JARVIS.state.conversation =
+                    JARVIS.state.conversation
+                        .slice(-100);
+            }
+        },
+
+        recent(count = 10) {
+
+            return JARVIS.state.conversation
+                .slice(-count);
+        },
+
+        contextText(count = 10) {
+
+            return this.recent(count)
+                .map(message => {
+
+                    const role =
+                        message.role === "user"
+                            ? "USER"
+                            : "JARVIS";
+
+                    return `${role}: ${message.text}`;
+
+                })
+                .join("\n");
+        }
+    },
+
+    /*
+    =====================================================
+    MEMORY ENGINE
+    =====================================================
+    */
+
+    memory: {
+
+        save(fact) {
+
+            if (!fact) return;
+
+            const normalized =
+                JARVIS.text.normalize(fact);
+
+            const exists =
+                JARVIS.state.memory.some(
+                    item =>
+                        JARVIS.text.normalize(
+                            item.text
+                        ) === normalized
+                );
+
+            if (exists) return;
+
+            JARVIS.state.memory.push({
+
+                id:
+                    crypto.randomUUID
+                    ? crypto.randomUUID()
+                    : String(Date.now()),
+
+                text: fact,
+
+                createdAt: Date.now(),
+
+                lastAccess: null
+            });
+
+            JARVIS.storage.save();
+
+            console.log(
+                "[MEMORY] Saved:",
+                fact
+            );
+        },
+
+        recall(query = "") {
+
+            if (
+                JARVIS.state.memory.length === 0
+            ) {
+
+                return [];
+            }
+
+            const q =
+                JARVIS.text.normalize(query);
+
+            const words =
+                q.split(/\s+/)
+                    .filter(Boolean);
+
+            const results =
+                JARVIS.state.memory
+                    .map(memory => {
+
+                        const text =
+                            JARVIS.text.normalize(
+                                memory.text
+                            );
+
+                        let score = 0;
+
+                        for (
+                            const word of words
+                        ) {
+
+                            if (
+                                word.length > 1 &&
+                                text.includes(word)
+                            ) {
+
+                                score++;
+                            }
+                        }
+
+                        return {
+
+                            ...memory,
+
+                            score
+                        };
+                    })
+
+                    .sort(
+                        (a, b) =>
+                            b.score - a.score
+                    );
+
+            return results
+                .slice(0, 10);
+        },
+
+        all() {
+
+            return [
+                ...JARVIS.state.memory
+            ];
+        },
+
+        clear() {
+
+            JARVIS.state.memory = [];
+
+            JARVIS.storage.save();
+        }
+    },
+
+    /*
+    =====================================================
+    MODEL GATEWAY
+    =====================================================
+
+    هنا المكان الذي سنوصل فيه الموديل الحقيقي.
+
+    حاليا يعمل Local Understanding Model
+    حتى JARVIS يشتغل بدون API.
+    =====================================================
+    */
+
+    model: {
+
+        enabled: false,
+
+        endpoint: "",
+
+        apiKey: "",
+
+        modelName: "",
+
+        async understand(message) {
+
+            if (
+                this.enabled &&
+                this.endpoint
+            ) {
+
+                try {
+
+                    return await
+                        this.remoteModel(
+                            message
+                        );
+
+                } catch (error) {
+
+                    console.warn(
+                        "Remote model failed.",
+                        error
+                    );
+                }
+            }
+
+            return this.localModel(
+                message
+            );
+        },
+
+        async remoteModel(message) {
+
+            const prompt = {
+
+                system: `
+You are the UNDERSTANDING MODEL
+inside J.A.R.V.I.S Cognitive OS.
+
+Your job is NOT to answer the user.
+
+Your job is to understand the message
+and return structured JSON.
+
+Possible intents:
+
+greeting
+memory_save
+memory_recall
+memory_forget
+system_status
+settings
+goal_set
+planning
+task_start
+task_update
+decision
+question
+chat
+unknown
+
+Return ONLY JSON.
+
+Schema:
+
+{
+ "intent": "",
+ "subIntent": "",
+ "goal": null,
+ "memoryAction": "none",
+ "memoryQuery": null,
+ "factsToSave": [],
+ "constraints": [],
+ "preferences": [],
+ "entities": [],
+ "urgency": 0,
+ "requiresContext": false,
+ "confidence": 0,
+ "reason": ""
+}
+`,
+
+                conversation:
+                    JARVIS.conversation
+                        .contextText(12),
+
+                message
+            };
+
+            const response =
+                await fetch(
+                    this.endpoint,
+                    {
+
+                        method: "POST",
+
+                        headers: {
+
+                            "Content-Type":
+                                "application/json",
+
+                            ...(this.apiKey
+                                ? {
+                                    Authorization:
+                                        `Bearer ${this.apiKey}`
+                                }
+                                : {})
+                        },
+
+                        body:
+                            JSON.stringify({
+
+                                model:
+                                    this.modelName,
+
+                                messages: [
+
+                                    {
+                                        role:
+                                            "system",
+
+                                        content:
+                                            prompt.system
+                                    },
+
+                                    {
+                                        role:
+                                            "user",
+
+                                        content:
+                                            JSON.stringify(
+                                                prompt
+                                            )
+                                    }
+                                ],
+
+                                temperature:
+                                    0.1
+                            })
+                    }
+                );
+
+            if (!response.ok) {
+
+                throw new Error(
+                    `Model HTTP ${response.status}`
+                );
+            }
+
+            const data =
+                await response.json();
+
+            const raw =
+                data?.choices?.[0]
+                    ?.message
+                    ?.content
+                ||
+                data?.output_text
+                ||
+                data?.response;
+
+            if (!raw) {
+
+                throw new Error(
+                    "Empty model response"
+                );
+            }
+
+            return JSON.parse(
+                String(raw)
+                    .replace(
+                        /^```json/i,
+                        ""
+                    )
+                    .replace(
+                        /```$/i,
+                        ""
+                    )
+                    .trim()
+            );
+        },
+
+        /*
+        =================================================
+        LOCAL SEMANTIC MODEL
+        =================================================
+
+        ده fallback فقط.
+
+        بعد توصيل موديل حقيقي:
+        model.enabled = true
+
+        ساعتها الموديل هو الذي يحلل اللغة.
+        =================================================
+        */
+
+        localModel(message) {
+
+            const n =
+                JARVIS.text.normalize(
+                    message
+                );
+
+            const result = {
+
+                intent: "unknown",
+
+                subIntent: "",
+
+                goal: null,
+
+                memoryAction: "none",
+
+                memoryQuery: null,
+
+                factsToSave: [],
+
+                constraints: [],
+
+                preferences: [],
+
+                entities: [],
+
+                urgency: 0.20,
+
+                requiresContext: false,
+
+                confidence: 0.55,
+
+                reason:
+                    "Local semantic fallback"
+            };
+
+            /*
+            =============================================
+            GREETING
+            =============================================
+            */
+
+            if (
+                JARVIS.text.includes(
+                    n,
+                    [
+                        "صباح الخير",
+                        "مساء الخير",
+                        "السلام عليكم",
+                        "اهلا",
+                        "مرحبا",
+                        "هاي"
+                    ]
+                )
+            ) {
+
+                result.intent =
+                    "greeting";
+
+                result.confidence =
+                    0.98;
+
+                return result;
+            }
+
+            /*
+            =============================================
+            SYSTEM
+            =============================================
+            */
+
+            if (
+                JARVIS.text.includes(
+                    n,
+                    [
+                        "حالة النظام",
+                        "حاله النظام",
+                        "وضع النظام"
+                    ]
+                )
+            ) {
+
+                result.intent =
+                    "system_status";
+
+                result.confidence =
+                    0.99;
+
+                return result;
+            }
+
+            /*
+            =============================================
+            SETTINGS
+            =============================================
+            */
+
+            if (
+                JARVIS.text.includes(
+                    n,
+                    [
+                        "اعداداتك",
+                        "إعداداتك",
+                        "اسلوب كلامك",
+                        "اسلوبك"
+                    ]
+                )
+            ) {
+
+                result.intent =
+                    "settings";
+
+                result.confidence =
+                    0.97;
+
+                return result;
+            }
+
+            /*
+            =============================================
+            MEMORY RECALL
+            =============================================
+            */
+
+            if (
+                JARVIS.text.includes(
+                    n,
+                    [
+                        "ماذا تتذكر",
+                        "ايه الي فاكره",
+                        "ايه اللي فاكره",
+                        "تفتكر انا بحب ايه",
+                        "هل تتذكر",
+                        "هل فاكر",
+                        "فكرني"
+                    ]
+                )
+            ) {
+
+                result.intent =
+                    "memory_recall";
+
+                result.memoryAction =
+                    "recall";
+
+                result.memoryQuery =
+                    message;
+
+                result.requiresContext =
+                    true;
+
+                result.confidence =
+                    0.97;
+
+                return result;
+            }
+
+            /*
+            =============================================
+            MEMORY SAVE
+            =============================================
+            */
+
+            const savePattern =
+                /^(?:تذكر|افتكر|احفظ|سجل)\s+(?:انني|اني|ان)?\s*(.+)$/i;
+
+            const saveMatch =
+                message.match(
+                    savePattern
+                );
+
+            if (
+                saveMatch
+            ) {
+
+                const fact =
+                    saveMatch[1].trim();
+
+                if (fact) {
+
+                    result.intent =
+                        "memory_save";
+
+                    result.memoryAction =
+                        "save";
+
+                    result.factsToSave =
+                        [fact];
+
+                    result.confidence =
+                        0.98;
+
+                    return result;
+                }
+            }
+
+            /*
+            =============================================
+            MEMORY FORGET
+            =============================================
+            */
+
+            if (
+                JARVIS.text.includes(
+                    n,
+                    [
+                        "انس",
+                        "انسي",
+                        "احذف من ذاكرتك",
+                        "لا تتذكر"
+                    ]
+                )
+            ) {
+
+                result.intent =
+                    "memory_forget";
+
+                result.memoryAction =
+                    "forget";
+
+                result.memoryQuery =
+                    message;
+
+                result.confidence =
+                    0.92;
+
+                return result;
+            }
+
+            /*
+            =============================================
+            CONTEXTUAL START
+            =============================================
+            */
+
+            if (
+                JARVIS.text.includes(
+                    n,
+                    [
+                        "ابدأ",
+                        "ابدا",
+                        "يلا نبدأ",
+                        "يلا نبدا",
+                        "كمل",
+                        "تابع",
+                        "نفذ"
+                    ]
+                )
+            ) {
+
+                if (
+                    JARVIS.state.goal ||
+                    JARVIS.state.plan
+                ) {
+
+                    result.intent =
+                        "task_start";
+
+                    result.requiresContext =
+                        true;
+
+                    result.confidence =
+                        0.96;
+
+                } else {
+
+                    result.intent =
+                        "unknown";
+
+                    result.confidence =
+                        0.60;
+                }
+
+                return result;
+            }
+
+            /*
+            =============================================
+            PLANNING
+            =============================================
+            */
+
+            const study =
+                JARVIS.text.includes(
+                    n,
+                    [
+                        "مذاكرة البرمجة",
+                        "مذاكره البرمجه",
+                        "ذاكر برمجه",
+                        "دراسة البرمجة",
+                        "دراسه البرمجه"
+                    ]
+                );
+
+            const planning =
+                JARVIS.text.includes(
+                    n,
+                    [
+                        "خطط",
+                        "خطة",
+                        "خطه",
+                        "جهزني",
+                        "اعمل لي خطة"
+                    ]
+                );
+
+            const urgent =
+                JARVIS.text.includes(
+                    n,
+                    [
+                        "متأخر",
+                        "متاخر",
+                        "مستعجل",
+                        "بسرعة",
+                        "بسرعه",
+                        "الوقت ضيق",
+                        "عايز اخلص بسرعة"
+                    ]
+                );
+
+            const fastPlanBad =
+                JARVIS.text.includes(
+                    n,
+                    [
+                        "الخطة السريعة",
+                        "الخطة السريعه",
+                        "الطريقة السريعة",
+                        "الطريقه السريعه"
+                    ]
+                )
+                &&
+                JARVIS.text.includes(
+                    n,
+                    [
+                        "مشت بشكل وحش",
+                        "ما نفعتش",
+                        "ما نفعت",
+                        "فشلت",
+                        "وحشة",
+                        "وحشه"
+                    ]
+                );
+
+            if (
+                study ||
+                planning ||
+                fastPlanBad
+            ) {
+
+                result.intent =
+                    "planning";
+
+                result.subIntent =
+                    "study_session";
+
+                result.goal =
+                    "مذاكرة البرمجة";
+
+                result.entities =
+                    ["البرمجة"];
+
+                result.requiresContext =
+                    true;
+
+                if (urgent) {
+
+                    result.urgency =
+                        0.92;
+
+                    result.constraints.push(
+                        "الوقت المتاح محدود"
+                    );
+                }
+
+                if (fastPlanBad) {
+
+                    result.preferences.push(
+                        "تجنب الخطة السريعة"
+                    );
+
+                    result.constraints.push(
+                        "الخطة السريعة لم تنجح سابقًا"
+                    );
+                }
+
+                result.confidence =
+                    0.94;
+
+                return result;
+            }
+
+            /*
+            =============================================
+            DECISION
+            =============================================
+            */
+
+            if (
+                JARVIS.text.includes(
+                    n,
+                    [
+                        "قارن 3 خطط",
+                        "قارن ثلاث خطط",
+                        "قارن الخطط",
+                        "قارن الخطط قبل"
+                    ]
+                )
+            ) {
+
+                result.intent =
+                    "decision";
+
+                result.subIntent =
+                    "compare_plans";
+
+                result.confidence =
+                    0.95;
+
+                return result;
+            }
+
+            return result;
+        }
+    },
+
+    /*
+    =====================================================
+    WORLD MODEL
+    =====================================================
+    */
+
+    worldModel: {
+
+        update(understanding) {
+
+            JARVIS.state.world
+                .currentContext =
+                JARVIS.conversation
+                    .recent(8);
+
+            JARVIS.state.world
+                .currentSituation = {
+
+                    intent:
+                        understanding.intent,
+
+                    goal:
+                        understanding.goal,
+
+                    urgency:
+                        understanding.urgency,
+
+                    constraints:
+                        understanding.constraints,
+
+                    preferences:
+                        understanding.preferences
+                };
+
+            JARVIS.state.world
+                .userState = {
+
+                    urgency:
+                        understanding.urgency,
+
+                    needsContext:
+                        understanding.requiresContext
+                };
+        }
+    },
+
+    /*
+    =====================================================
+    GOAL ENGINE
+    =====================================================
+    */
+
+    goals: {
+
+        set(
+            title,
+            analysis
+        ) {
+
+            JARVIS.state.goal = {
+
+                title,
+
+                createdAt:
+                    Date.now(),
+
+                urgency:
+                    analysis.urgency || 0,
+
+                constraints:
+                    analysis.constraints || [],
+
+                preferences:
+                    analysis.preferences || [],
+
+                status:
+                    "active"
+            };
+
+            JARVIS.storage.save();
+        },
+
+        clear() {
+
+            JARVIS.state.goal =
+                null;
+
+            JARVIS.state.plan =
+                null;
+
+            JARVIS.storage.save();
+        }
+    },
+
+    /*
+    =====================================================
+    PLANNER
+    =====================================================
+    */
+
+    planner: {
+
+        build(
+            goal,
+            analysis
+        ) {
+
+            const urgent =
+                Number(
+                    analysis.urgency || 0
+                ) >= 0.75;
+
+            const avoidFast =
+                (
+                    analysis.preferences ||
+                    []
+                ).some(
+                    p =>
+                        JARVIS.text.includes(
+                            p,
+                            [
+                                "تجنب الخطة السريعة"
+                            ]
+                        )
+                );
+
+            const plans = [
+
+                {
+
+                    id: "intensive",
+
+                    name:
+                        "الخطة المكثفة",
+
+                    score:
+                        urgent
+                            ? 0.76
+                            : 0.60,
+
+                    steps: [
+
+                        "تحديد أهم جزء",
+
+                        "جلسة تركيز قصيرة",
+
+                        "تطبيق مباشر",
+
+                        "مراجعة سريعة"
+                    ]
+                },
+
+                {
+
+                    id: "balanced",
+
+                    name:
+                        "الخطة المتوازنة",
+
+                    score:
+                        0.84,
+
+                    steps: [
+
+                        "تحديد نطاق المذاكرة",
+
+                        "فهم المفاهيم",
+
+                        "تطبيق عملي",
+
+                        "مراجعة واختبار"
+                    ]
+                },
+
+                {
+
+                    id: "safe",
+
+                    name:
+                        "الخطة الآمنة",
+
+                    score:
+                        avoidFast
+                            ? 0.92
+                            : 0.79,
+
+                    steps: [
+
+                        "تقسيم الهدف",
+
+                        "البدء بالجزء الأكثر وضوحًا",
+
+                        "تطبيق تدريجي",
+
+                        "التحقق من الإنجاز"
+                    ]
+                }
+            ];
+
+            /*
+            الخطة السريعة/المكثفة تتأثر
+            بالتجربة السابقة السيئة.
+            */
+
+            if (avoidFast) {
+
+                const intensive =
+                    plans.find(
+                        p =>
+                            p.id ===
+                            "intensive"
+                    );
+
+                if (intensive) {
+
+                    intensive.score -=
+                        0.30;
+                }
+            }
+
+            plans.sort(
+                (a, b) =>
+                    b.score - a.score
+            );
+
+            return {
+
+                goal,
+
+                compared:
+                    plans.map(
+                        p => ({
+
+                            name:
+                                p.name,
+
+                            score:
+                                Number(
+                                    p.score
+                                    .toFixed(2)
+                                )
+                        })
+                    ),
+
+                selected:
+                    plans[0],
+
+                reason:
+                    avoidFast
+
+                        ? "التجربة السابقة مع السرعة كانت سيئة، لذلك خفضت أولوية الخطة المكثفة."
+
+                        : urgent
+
+                            ? "الوقت ضيق، لذلك تم رفع أولوية التنفيذ العملي."
+
+                            : "الخطة المتوازنة تحقق أفضل توازن حاليًا."
+            };
+        }
+    },
+
+    /*
+    =====================================================
+    DECISION ENGINE
+    =====================================================
+    */
+
+    decision: {
+
+        choose(plan) {
+
+            if (!plan) {
+
+                return null;
+            }
+
+            const selected =
+                plan.selected;
+
+            return {
+
+                action:
+                    selected.name,
+
+                confidence:
+                    Math.min(
+                        0.99,
+                        0.75 +
+                        selected.score *
+                        0.20
+                    ),
+
+                reason:
+                    plan.reason
+            };
+        }
+    },
+
+    /*
+    =====================================================
+    EXECUTION ENGINE
+    =====================================================
+    */
+
+    action: {
+
+        start() {
+
+            if (
+                !JARVIS.state.goal
+            ) {
+
+                return {
+
+                    success: false,
+
+                    message:
+                        "لا يوجد هدف حالي."
+                };
+            }
+
+            if (
+                !JARVIS.state.plan
+            ) {
+
+                return {
+
+                    success: false,
+
+                    message:
+                        "لا توجد خطة جاهزة."
+                };
+            }
+
+            JARVIS.state.plan.startedAt =
+                Date.now();
+
+            JARVIS.state.plan.currentStep =
+                0;
+
+            JARVIS.state.system
+                .cognitiveState =
+                "execution";
+
+            JARVIS.storage.save();
+
+            return {
+
+                success: true,
+
+                message:
+                    "بدأ التنفيذ."
+            };
+        }
+    },
+
+    /*
+    =====================================================
+    REFLECTION ENGINE
+    =====================================================
+    */
+
+    reflection: {
+
+        review() {
+
+            if (
+                !JARVIS.state.plan
+            ) {
+
+                return null;
+            }
+
+            return {
+
+                reviewedAt:
+                    Date.now(),
+
+                goal:
+                    JARVIS.state.goal?.title,
+
+                plan:
+                    JARVIS.state.plan
+                        ?.selected
+                        ?.name,
+
+                result:
+                    "pending"
+            };
+        }
+    },
+
+    /*
+    =====================================================
+    RESPONSE ENGINE
+    =====================================================
+    */
+
+    response: {
+
+        generate(
+            analysis
+        ) {
+
+            switch (
+                analysis.intent
+            ) {
+
+                case "greeting":
+
+                    return (
+                        "صباح الخير يا سيدي. " +
+                        "النواة المعرفية جاهزة."
+                    );
+
+                case "memory_save":
+
+                    return (
+                        "تم حفظ المعلومة في الذاكرة."
+                    );
+
+                case "memory_recall": {
+
+                    const memories =
+                        JARVIS.memory.recall(
+                            analysis.memoryQuery
+                        );
+
+                    if (
+                        !memories.length
+                    ) {
+
+                        return (
+                            "بحثت في الذاكرة، " +
+                            "ولم أجد معلومة مطابقة."
+                        );
+                    }
+
+                    return (
+                        "أتذكر:\n" +
+
+                        memories
+                            .map(
+                                (m, i) =>
+                                    `${i + 1}. ${m.text}`
+                            )
+                            .join("\n")
+                    );
+                }
+
+                case "memory_forget":
+
+                    return (
+                        "سأحتاج تحديد المعلومة " +
+                        "التي تريد حذفها بشكل أوضح."
+                    );
+
+                case "system_status":
+
+                    return [
+
+                        "النظام: يعمل",
+
+                        "البيئة: web",
+
+                        `الحالة المعرفية: ${
+                            JARVIS.state.system
+                                .cognitiveState
+                        }`,
+
+                        `الإدراك الداخلي: ${
+                            Math.round(
+                                JARVIS.state.system
+                                    .awareness * 100
+                            )
+                        }%`,
+
+                        `الانتباه: ${
+                            Math.round(
+                                JARVIS.state.system
+                                    .attention * 100
+                            )
+                        }%`,
+
+                        `الثقة: ${
+                            Math.round(
+                                JARVIS.state.system
+                                    .confidence * 100
+                            )
+                        }%`,
+
+                        `عدم اليقين: ${
+                            Math.round(
+                                JARVIS.state.system
+                                    .uncertainty * 100
+                            )
+                        }%`,
+
+                        `الهدف الحالي: ${
+                            JARVIS.state.goal?.title
+                            || "لا يوجد"
+                        }`
+
+                    ].join("\n");
+
+                case "settings":
+
+                    return [
+
+                        "إعداداتي الحالية:",
+
+                        `المخاطبة: ${
+                            JARVIS.state.settings.address
+                        }`,
+
+                        `النبرة: ${
+                            JARVIS.state.settings.tone
+                        }`,
+
+                        `الاختصار: ${
+                            JARVIS.state.settings.concise
+                                ? "مفعل"
+                                : "غير مفعل"
+                        }`,
+
+                        `الرسمية: ${
+                            Math.round(
+                                JARVIS.state.settings
+                                    .formality * 100
+                            )
+                        }%`,
+
+                        `الفكاهة: ${
+                            Math.round(
+                                JARVIS.state.settings
+                                    .humor * 100
+                            )
+                        }%`,
+
+                        `المبادرة: ${
+                            JARVIS.state.settings
+                                .proactive
+                                ? "مفعلة"
+                                : "غير مفعلة"
+                        }`
+
+                    ].join("\n");
+
+                case "planning": {
+
+                    const goal =
+                        analysis.goal ||
+                        "هدف جديد";
+
+                    JARVIS.goals.set(
+                        goal,
+                        analysis
+                    );
+
+                    const plan =
+                        JARVIS.planner.build(
+                            goal,
+                            analysis
+                        );
+
+                    JARVIS.state.plan =
+                        plan;
+
+                    const decision =
+                        JARVIS.decision
+                            .choose(plan);
+
+                    JARVIS.state.system
+                        .confidence =
+                        decision.confidence;
+
+                    JARVIS.state.system
+                        .uncertainty =
+                        1 -
+                        decision.confidence;
+
+                    JARVIS.storage.save();
+
+                    return [
+
+                        `تم فهم الهدف: ${goal}`,
+
+                        "حللت الحالة الحالية.",
+
+                        "قارنت 3 خطط.",
+
+                        `الخطة المختارة: ${
+                            decision.action
+                        }.`,
+
+                        `سبب الاختيار: ${
+                            decision.reason
+                        }`,
+
+                        "الجلسة جاهزة. " +
+                        "قل «ابدأ» للتنفيذ."
+
+                    ].join("\n");
+                }
+
+                case "task_start": {
+
+                    const result =
+                        JARVIS.action.start();
+
+                    if (
+                        !result.success
+                    ) {
+
+                        return result.message;
+                    }
+
+                    const plan =
+                        JARVIS.state.plan;
+
+                    return [
+
+                        `بدأت: ${
+                            JARVIS.state.goal.title
+                        }`,
+
+                        `الخطة: ${
+                            plan.selected.name
+                        }`,
+
+                        "",
+
+                        ...plan.selected.steps
+                            .map(
+                                (step, i) =>
+                                    `${i + 1}. ${step}`
+                            ),
+
+                        "",
+
+                        "حالة التنفيذ: نشطة."
+
+                    ].join("\n");
+                }
+
+                case "decision":
+
+                    if (
+                        JARVIS.state.plan
+                    ) {
+
+                        const d =
+                            JARVIS.decision
+                                .choose(
+                                    JARVIS.state.plan
+                                );
+
+                        return [
+
+                            `القرار: ${
+                                d.action
+                            }`,
+
+                            `السبب: ${
+                                d.reason
+                            }`,
+
+                            `الثقة: ${
+                                Math.round(
+                                    d.confidence *
+                                    100
+                                )
+                            }%`
+
+                        ].join("\n");
+                    }
+
+                    return (
+                        "لا توجد خطط حالية للمقارنة."
+                    );
+
+                default:
+
+                    return (
+                        "فهمت الرسالة، " +
+                        "لكنني لا أملك يقينًا كافيًا " +
+                        "لتحديد الإجراء المناسب."
+                    );
+            }
+        }
+    },
+
+    /*
+    =====================================================
+    MAIN COGNITIVE LOOP
+    =====================================================
+    */
+
+    async process(message) {
+
+        console.log(
+            "\n========== JARVIS CYCLE =========="
+        );
+
+        console.log(
+            "[1] USER:",
+            message
+        );
+
+        /*
+        OBSERVE
+        */
+
+        this.state.system
+            .cognitiveState =
+            "understanding";
+
+        /*
+        UNDERSTAND
+        */
+
+        const understanding =
+            await this.model
+                .understand(message);
+
+        console.log(
+            "[2] UNDERSTANDING:",
+            understanding
+        );
+
+        this.state.lastUnderstanding =
+            understanding;
+
+        this.state.system
+            .confidence =
+            Number(
+                understanding.confidence
+            ) || 0.5;
+
+        this.state.system
+            .uncertainty =
+            1 -
+            this.state.system.confidence;
+
+        /*
+        WORLD MODEL
+        */
+
+        this.worldModel.update(
+            understanding
+        );
+
+        console.log(
+            "[3] WORLD MODEL UPDATED"
+        );
+
+        /*
+        REASON
+        */
+
+        this.state.system
+            .cognitiveState =
+            "reasoning";
+
+        const reply =
+            this.response.generate(
+                understanding
+            );
+
+        console.log(
+            "[4] RESPONSE:",
+            reply
+        );
+
+        /*
+        STORE CONVERSATION
+        */
+
+        this.conversation
+            .addJarvis(reply);
+
+        /*
+        REFLECTION
+        */
+
+        this.state.system
+            .cognitiveState =
+            "reflection";
+
+        this.reflection.review();
+
+        /*
+        DONE
+        */
+
+        this.state.system
+            .cognitiveState =
+            "idle";
+
+        this.storage.save();
+
+        console.log(
+            "========== CYCLE COMPLETE ==========\n"
+        );
+
+        return reply;
+    }
+};
+
+
+/*
+=========================================================
+UI
 =========================================================
 */
 
-const STORAGE = {
-  memory: "jarvis_v1_memory",
-  profile: "jarvis_v1_profile",
-  goals: "jarvis_v1_goals",
-  episodes: "jarvis_v1_episodes"
-};
+function $(id) {
 
-const $ = (id) => document.getElementById(id);
-
-const UI = {
-  chat: $("chat"),
-  input: $("input"),
-  form: $("command-form"),
-  system: $("system-state"),
-  mode: $("mode-state"),
-  awareness: $("awareness-value"),
-  awarenessBar: $("awareness-bar"),
-  attention: $("attention-value"),
-  attentionBar: $("attention-bar"),
-  confidence: $("confidence-value"),
-  confidenceBar: $("confidence-bar"),
-  uncertainty: $("uncertainty-value"),
-  uncertaintyBar: $("uncertainty-bar"),
-  goal: $("goal-state"),
-  thought: $("thought-state"),
-  plan: $("plan-state"),
-  action: $("action-state"),
-  behavior: $("behavior-state"),
-  log: $("cognitive-log")
-};
-
-function clamp(n, min = 0, max = 1) {
-  return Math.max(min, Math.min(max, Number(n) || 0));
+    return document.getElementById(id);
 }
 
-function nowISO() {
-  return new Date().toISOString();
-}
 
-function normalizeArabic(text) {
-  return String(text || "")
-    .toLowerCase()
-    .replace(/[إأآ]/g, "ا")
-    .replace(/ة/g, "ه")
-    .replace(/ى/g, "ي")
-    .replace(/[ًٌٍَُِّْـ]/g, "")
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
+function renderMessages() {
 
-function containsAny(text, words) {
-  const n = normalizeArabic(text);
-  return words.some(w => n.includes(normalizeArabic(w)));
-}
+    const container =
+        $("messages");
 
-function safeJSON(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
+    if (!container) return;
 
-function saveJSON(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
+    container.innerHTML = "";
 
-/* =========================================================
-   VOICE OUTPUT
-========================================================= */
+    for (
+        const message
+        of JARVIS.state.conversation
+    ) {
 
-const VoiceOutput = {
-  enabled: true,
-  speaking: false,
+        const div =
+            document.createElement(
+                "div"
+            );
 
-  speak(text) {
-    if (!this.enabled || !("speechSynthesis" in window)) return;
+        div.className =
+            "message " +
+            (
+                message.role === "user"
+                    ? "user-message"
+                    : "jarvis-message"
+            );
 
-    try {
-      window.speechSynthesis.cancel();
+        div.textContent =
+            message.text;
 
-      const profile = Personalization.profile.voice;
-      const utterance = new SpeechSynthesisUtterance(text);
-
-      utterance.lang = profile.language || "ar-EG";
-      utterance.rate = clamp(profile.rate, 0.5, 2);
-      utterance.pitch = clamp(profile.pitch, 0, 2);
-      utterance.volume = clamp(profile.volume, 0, 1);
-
-      this.speaking = true;
-      utterance.onend = () => { this.speaking = false; };
-      utterance.onerror = () => { this.speaking = false; };
-
-      window.speechSynthesis.speak(utterance);
-    } catch (error) {
-      CognitiveLog.add("VOICE_ERROR", error.message);
-    }
-  }
-};
-
-function jarvisSay(text, speak = true) {
-  addMessage("J.A.R.V.I.S", text, "jarvis");
-  if (speak) VoiceOutput.speak(text);
-}
-
-function addMessage(who, text, className) {
-  const box = document.createElement("div");
-  box.className = `msg ${className}`;
-
-  const label = document.createElement("div");
-  label.className = "who";
-  label.textContent = who;
-
-  const body = document.createElement("div");
-  body.textContent = text;
-
-  box.append(label, body);
-  UI.chat.appendChild(box);
-  UI.chat.scrollTop = UI.chat.scrollHeight;
-}
-
-/* =========================================================
-   COGNITIVE LOG
-========================================================= */
-
-const CognitiveLog = {
-  entries: [],
-
-  add(type, message) {
-    this.entries.unshift({
-      time: new Date().toLocaleTimeString("ar-EG"),
-      type,
-      message: String(message)
-    });
-
-    this.entries = this.entries.slice(0, 35);
-    UI.log.innerHTML = this.entries
-      .map(e => `[${e.time}] ${e.type}: ${e.message}`)
-      .join("<br>");
-  }
-};
-
-/* =========================================================
-   SELF MODEL
-========================================================= */
-
-const SelfModel = {
-  state: {
-    mode: "OBSERVING",
-    awareness: 0.72,
-    attention: 0.65,
-    confidence: 0.80,
-    uncertainty: 0.20,
-    currentThought: "في انتظار الإدراك...",
-    currentAction: "لا يوجد",
-    lastObservation: "لا يوجد",
-    uptimeStarted: Date.now()
-  },
-
-  update(patch = {}) {
-    Object.assign(this.state, patch);
-
-    this.state.awareness = clamp(this.state.awareness);
-    this.state.attention = clamp(this.state.attention);
-    this.state.confidence = clamp(this.state.confidence);
-    this.state.uncertainty = clamp(this.state.uncertainty);
-
-    renderCognitiveState();
-  }
-};
-
-/* =========================================================
-   WORLD MODEL
-========================================================= */
-
-const WorldModel = {
-  state: {
-    environment: "web",
-    userInput: "",
-    normalizedInput: "",
-    currentIntent: "unknown",
-    userMoodEstimate: "neutral",
-    time: nowISO(),
-    availableTools: ["memory", "goals", "planner", "voice", "focus_mode"]
-  },
-
-  update(patch = {}) {
-    Object.assign(this.state, patch, { time: nowISO() });
-  }
-};
-
-/* =========================================================
-   MEMORY SYSTEM
-========================================================= */
-
-const MemorySystem = {
-  get memories() {
-    return safeJSON(STORAGE.memory, []);
-  },
-
-  remember(text, type = "semantic", confidence = 0.9) {
-    const memories = this.memories;
-    const normalized = normalizeArabic(text);
-
-    if (!normalized) return false;
-
-    const existing = memories.find(m => m.normalized === normalized);
-    if (existing) {
-      existing.lastSeen = nowISO();
-      existing.confidence = Math.max(existing.confidence, confidence);
-      saveJSON(STORAGE.memory, memories);
-      return true;
-    }
-
-    memories.push({
-      id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
-      text: text.trim(),
-      normalized,
-      type,
-      confidence,
-      createdAt: nowISO(),
-      lastSeen: nowISO()
-    });
-
-    saveJSON(STORAGE.memory, memories);
-    CognitiveLog.add("MEMORY", `Stored ${type} memory`);
-    return true;
-  },
-
-  all() {
-    return this.memories;
-  },
-
-  search(query) {
-    const q = normalizeArabic(query);
-    if (!q) return [];
-
-    return this.memories
-      .map(m => {
-        const words = q.split(" ").filter(Boolean);
-        const score = words.reduce(
-          (s, word) => s + (m.normalized.includes(word) ? 1 : 0),
-          0
+        container.appendChild(
+            div
         );
-        return { ...m, score };
-      })
-      .filter(m => m.score > 0)
-      .sort((a, b) => b.score - a.score);
-  }
-};
-
-/* =========================================================
-   PERSONALIZATION ENGINE
-========================================================= */
-
-const defaultProfile = {
-  name: "J.A.R.V.I.S",
-  userAddress: "يا سيدي",
-
-  communication: {
-    tone: "calm",
-    formality: 0.65,
-    verbosity: 0.55,
-    humor: 0.25,
-    concise: false
-  },
-
-  behavior: {
-    askWhenUncertain: true,
-    verifyActions: true,
-    comparePlans: true,
-    planCount: 3,
-    proactive: true
-  },
-
-  voice: {
-    enabled: true,
-    language: "ar-EG",
-    rate: 0.95,
-    pitch: 1.0,
-    volume: 1.0
-  }
-};
-
-const Personalization = {
-  profile: safeJSON(STORAGE.profile, structuredClone(defaultProfile)),
-
-  save() {
-    saveJSON(STORAGE.profile, this.profile);
-    renderCognitiveState();
-    CognitiveLog.add("PROFILE", "Persistent behavior updated");
-  },
-
-  set(path, value) {
-    const parts = path.split(".");
-    let target = this.profile;
-
-    for (let i = 0; i < parts.length - 1; i++) {
-      if (!target[parts[i]]) target[parts[i]] = {};
-      target = target[parts[i]];
     }
 
-    target[parts.at(-1)] = value;
-    this.save();
-  },
-
-  describe() {
-    const p = this.profile;
-    return [
-      `مخاطبتك: ${p.userAddress}`,
-      `النبرة: ${p.communication.tone}`,
-      `الاختصار: ${p.communication.concise ? "مفعل" : "غير مفعل"}`,
-      `الرسمية: ${Math.round(p.communication.formality * 100)}%`,
-      `الفكاهة: ${Math.round(p.communication.humor * 100)}%`,
-      `المبادرة: ${p.behavior.proactive ? "مفعلة" : "غير مفعلة"}`,
-      `مراجعة النتائج: ${p.behavior.verifyActions ? "مفعلة" : "غير مفعلة"}`,
-      `مقارنة الخطط: ${p.behavior.comparePlans ? "مفعلة" : "غير مفعلة"}`,
-      `سرعة الصوت: ${p.voice.rate}`
-    ].join("\n");
-  }
-};
-
-/* =========================================================
-   GOAL SYSTEM
-========================================================= */
-
-const GoalSystem = {
-  get goals() {
-    return safeJSON(STORAGE.goals, []);
-  },
-
-  setGoal(description) {
-    const goals = this.goals;
-
-    goals.forEach(g => {
-      if (g.status === "active") g.status = "paused";
-    });
-
-    const goal = {
-      id: Date.now(),
-      description,
-      normalized: normalizeArabic(description),
-      status: "active",
-      priority: 0.8,
-      progress: 0,
-      createdAt: nowISO(),
-      updatedAt: nowISO()
-    };
-
-    goals.push(goal);
-    saveJSON(STORAGE.goals, goals);
-
-    SelfModel.update({
-      mode: "GOAL_SELECTED",
-      currentThought: `تم تحديد الهدف: ${description}`
-    });
-
-    CognitiveLog.add("GOAL", description);
-    return goal;
-  },
-
-  current() {
-    return this.goals.find(g => g.status === "active") || null;
-  },
-
-  complete(goal) {
-    if (!goal) return;
-    const goals = this.goals;
-    const item = goals.find(g => g.id === goal.id);
-    if (!item) return;
-
-    item.status = "completed";
-    item.progress = 1;
-    item.updatedAt = nowISO();
-    saveJSON(STORAGE.goals, goals);
-  }
-};
-
-/* =========================================================
-   INTENT / UNDERSTANDING
-========================================================= */
-
-const Intent = {
-  MEMORY_SAVE: "memory_save",
-  MEMORY_READ: "memory_read",
-  SYSTEM_STATUS: "system_status",
-  GOAL: "goal",
-  PERSONALITY: "personality",
-  BEHAVIOR: "behavior",
-  VOICE: "voice",
-  SETTINGS: "settings",
-  GREETING: "greeting",
-  HELP: "help",
-  UNKNOWN: "unknown"
-};
-
-function understand(input) {
-  const n = normalizeArabic(input);
-
-  if (containsAny(n, ["تذكر", "افتكر", "احفظ", "خلي بالك"])) {
-    return { type: Intent.MEMORY_SAVE, confidence: 0.96 };
-  }
-
-  if (containsAny(n, ["ماذا تتذكر", "ايه اللي تفتكره", "الذاكره", "ذكرياتي"])) {
-    return { type: Intent.MEMORY_READ, confidence: 0.95 };
-  }
-
-  if (containsAny(n, ["حاله النظام", "حالة النظام", "system status", "حالتك"])) {
-    return { type: Intent.SYSTEM_STATUS, confidence: 0.96 };
-  }
-
-  // Behavior rules come before GOAL so phrases like
-  // "قارن 3 خطط قبل أي هدف" are not mistaken for a goal.
-  if (containsAny(n, [
-    "قارن 3 خطط",
-    "قارن ثلاث خطط",
-    "قارن ثلاثه خطط",
-    "قبل اي هدف",
-    "قبل أي هدف",
-    "من دلوقتي",
-    "من الان",
-    "غير سلوكك",
-    "غير طريقه تفكيرك",
-    "قبل ما تاخد قرار"
-  ])) {
-    return { type: Intent.BEHAVIOR, confidence: 0.96 };
-  }
-
-  if (containsAny(n, [
-    "ما اعداداتك",
-    "ايه اعداداتك",
-    "ما هي اعداداتك",
-    "اعداداتك الحاليه",
-    "اعداداتك الحالية",
-    "ما اعدادات النظام",
-    "اعدادات النظام"
-  ])) {
-    return { type: Intent.SETTINGS, confidence: 0.97 };
-  }
-
-  if (containsAny(n, ["جهزني", "اريد ان اذاكر", "عايز اذاكر", "هدف"])) {
-    return { type: Intent.GOAL, confidence: 0.88 };
-  }
-
-  if (containsAny(n, ["كلمني", "اسلوبك", "طريقه كلامك", "طريقة كلامك", "رسمي", "مختصر"])) {
-    return { type: Intent.PERSONALITY, confidence: 0.90 };
-  }
-
-  if (containsAny(n, ["صوتك", "سرعه الصوت", "سرعة الصوت", "اتكلم ابطأ", "اتكلم أبطأ"])) {
-    return { type: Intent.VOICE, confidence: 0.93 };
-  }
-
-  if (containsAny(n, ["مرحبا", "اهلا", "أهلا", "صباح الخير", "مساء الخير", "السلام عليكم"])) {
-    return { type: Intent.GREETING, confidence: 0.98 };
-  }
-
-  if (containsAny(n, ["ساعدني", "ماذا تستطيع", "ايه اللي تقدر", "ماذا يمكنك"])) {
-    return { type: Intent.HELP, confidence: 0.92 };
-  }
-
-  return { type: Intent.UNKNOWN, confidence: 0.42 };
+    container.scrollTop =
+        container.scrollHeight;
 }
 
-/* =========================================================
-   EMOTION / CONTEXT ESTIMATOR
-========================================================= */
 
-function estimateMood(text) {
-  const n = normalizeArabic(text);
+function renderAnalysis() {
 
-  if (containsAny(n, ["زهقت", "متضايق", "مخنوق", "غضبان", "عصبت", "مش شغال"])) {
-    return "frustrated";
-  }
+    const container =
+        $("analysis");
 
-  if (containsAny(n, ["جامد", "ممتاز", "حلو", "متحمس", "رائع"])) {
-    return "positive";
-  }
+    if (!container) return;
 
-  if (containsAny(n, ["خايف", "قلقان", "قلق"])) {
-    return "anxious";
-  }
+    const a =
+        JARVIS.state.lastUnderstanding;
 
-  return "neutral";
+    if (!a) {
+
+        container.textContent =
+            "لا يوجد تحليل بعد.";
+
+        return;
+    }
+
+    container.innerHTML = `
+
+        <div>
+            <b>Intent:</b>
+            ${escapeHTML(a.intent)}
+        </div>
+
+        <div>
+            <b>Sub Intent:</b>
+            ${escapeHTML(a.subIntent || "—")}
+        </div>
+
+        <div>
+            <b>Goal:</b>
+            ${escapeHTML(a.goal || "—")}
+        </div>
+
+        <div>
+            <b>Memory:</b>
+            ${escapeHTML(a.memoryAction)}
+        </div>
+
+        <div>
+            <b>Urgency:</b>
+            ${Math.round(
+                (a.urgency || 0) * 100
+            )}%
+        </div>
+
+        <div>
+            <b>Confidence:</b>
+            ${Math.round(
+                (a.confidence || 0) * 100
+            )}%
+        </div>
+
+        <div>
+            <b>Context:</b>
+            ${a.requiresContext
+                ? "مطلوب"
+                : "غير مطلوب"
+            }
+        </div>
+    `;
 }
 
-/* =========================================================
-   PLANNER
-========================================================= */
 
-const Planner = {
-  generate(goal) {
-    const description = goal.description;
-    const plans = [
-      {
-        id: "A",
-        title: "خطة سريعة",
-        steps: [
-          "تحديد الموضوع",
-          "مراجعة الأساسيات",
-          "حل تطبيقات قصيرة",
-          "مراجعة النتيجة"
-        ],
-        score: 0
-      },
-      {
-        id: "B",
-        title: "خطة متوازنة",
-        steps: [
-          "تحديد نقطة البداية",
-          "دراسة المفهوم الأساسي",
-          "تطبيق عملي",
-          "حل مسائل",
-          "اختبار الفهم"
-        ],
-        score: 0
-      },
-      {
-        id: "C",
-        title: "خطة عميقة",
-        steps: [
-          "تحديد المعرفة السابقة",
-          "بناء المفهوم",
-          "تطبيق عملي",
-          "حل مسائل متنوعة",
-          "اختبار",
-          "مراجعة الأخطاء"
-        ],
-        score: 0
-      }
-    ];
+function renderMemory() {
 
-    plans.forEach(plan => {
-      plan.score =
-        (plan.id === "B" ? 0.92 : 0.78) +
-        (description.length > 15 ? 0.03 : 0);
-    });
+    const container =
+        $("memory");
 
-    plans.sort((a, b) => b.score - a.score);
+    if (!container) return;
 
-    const selected = Personalization.profile.behavior.comparePlans
-      ? plans[0]
-      : plans[1];
-
-    CognitiveLog.add(
-      "PLANNER",
-      `Compared ${plans.length} plans → ${selected.id}`
-    );
-
-    return { plans, selected };
-  }
-};
-
-/* =========================================================
-   DECISION ENGINE
-========================================================= */
-
-const DecisionEngine = {
-  choose(options) {
-    if (!options?.length) {
-      return { selected: null, confidence: 0.1 };
-    }
-
-    const sorted = [...options].sort((a, b) => b.score - a.score);
-    const selected = sorted[0];
-
-    return {
-      selected,
-      confidence: clamp(selected.score)
-    };
-  }
-};
-
-/* =========================================================
-   ACTION / TOOL ENGINE
-========================================================= */
-
-const ToolEngine = {
-  available: {
-    focus_mode: true,
-    memory: true,
-    goals: true,
-    planner: true,
-    voice: true
-  },
-
-  execute(action) {
-    SelfModel.update({
-      mode: "ACTING",
-      currentAction: action.name,
-      currentThought: `تنفيذ: ${action.name}`
-    });
-
-    CognitiveLog.add("ACTION", action.name);
-
-    if (action.name === "focus_mode") {
-      return {
-        success: true,
-        message: "تم تجهيز وضع التركيز."
-      };
-    }
-
-    if (action.name === "announce") {
-      return {
-        success: true,
-        message: action.message || "تم الإعلان."
-      };
-    }
-
-    return {
-      success: false,
-      message: "الأداة غير متاحة في هذه المرحلة."
-    };
-  }
-};
-
-/* =========================================================
-   OBSERVATION / REFLECTION
-========================================================= */
-
-const ObservationEngine = {
-  verify(result) {
-    const observed = {
-      success: Boolean(result?.success),
-      message: result?.message || "لا توجد نتيجة."
-    };
-
-    SelfModel.update({
-      mode: "OBSERVING",
-      lastObservation: observed.message,
-      confidence: observed.success ? 0.94 : 0.38,
-      uncertainty: observed.success ? 0.06 : 0.62
-    });
-
-    CognitiveLog.add(
-      "OBSERVATION",
-      `${observed.success ? "SUCCESS" : "FAIL"} — ${observed.message}`
-    );
-
-    return observed;
-  }
-};
-
-const ReflectionEngine = {
-  reflect(context) {
-    const episodes = safeJSON(STORAGE.episodes, []);
-
-    episodes.push({
-      time: nowISO(),
-      intent: context.intent,
-      goal: context.goal || null,
-      action: context.action || null,
-      result: context.result || null,
-      lesson: context.lesson || "تمت مراجعة النتيجة."
-    });
-
-    saveJSON(STORAGE.episodes, episodes.slice(-100));
-
-    CognitiveLog.add("REFLECTION", context.lesson || "Completed");
-  }
-};
-
-/* =========================================================
-   AUTONOMY / COGNITIVE LOOP
-========================================================= */
-
-const CognitiveEngine = {
-  async process(userText) {
-    WorldModel.update({
-      userInput: userText,
-      normalizedInput: normalizeArabic(userText),
-      userMoodEstimate: estimateMood(userText)
-    });
-
-    SelfModel.update({
-      mode: "PERCEIVING",
-      attention: 0.86,
-      awareness: 0.82,
-      currentThought: "أفهم المدخل وأحدد السياق..."
-    });
-
-    const intent = understand(userText);
-    WorldModel.update({ currentIntent: intent.type });
-
-    SelfModel.update({
-      mode: "REASONING",
-      confidence: intent.confidence,
-      uncertainty: 1 - intent.confidence,
-      currentThought: `النية المحتملة: ${intent.type}`
-    });
-
-    CognitiveLog.add(
-      "UNDERSTANDING",
-      `${intent.type} (${Math.round(intent.confidence * 100)}%)`
-    );
-
-    return this.dispatch(intent, userText);
-  },
-
-  async dispatch(intent, userText) {
-    switch (intent.type) {
-      case Intent.MEMORY_SAVE:
-        return this.handleMemorySave(userText);
-
-      case Intent.MEMORY_READ:
-        return this.handleMemoryRead();
-
-      case Intent.SYSTEM_STATUS:
-        return this.handleStatus();
-
-      case Intent.GOAL:
-        return this.handleGoal(userText);
-
-      case Intent.PERSONALITY:
-        return this.handlePersonality(userText);
-
-      case Intent.BEHAVIOR:
-        return this.handleBehavior(userText);
-
-      case Intent.VOICE:
-        return this.handleVoice(userText);
-
-      case Intent.SETTINGS:
-        return this.handleSettings();
-
-      case Intent.GREETING:
-        return this.handleGreeting();
-
-      case Intent.HELP:
-        return this.handleHelp();
-
-      default:
-        return this.handleUnknown(userText);
-    }
-  },
-
-  handleMemorySave(text) {
-    let memory = text
-      .replace(/تذكر/gi, "")
-      .replace(/افتكر/gi, "")
-      .replace(/احفظ/gi, "")
-      .trim();
-
-    memory = memory.replace(/^انني\s*/i, "").replace(/^اني\s*/i, "").trim();
-
-    if (!memory) {
-      return "بالتأكيد. ما المعلومة التي تريد مني حفظها؟";
-    }
-
-    MemorySystem.remember(memory);
-    return "تم حفظ المعلومة في ذاكرتي.";
-  },
-
-  handleMemoryRead() {
-    const memories = MemorySystem.all();
+    const memories =
+        JARVIS.memory.all();
 
     if (!memories.length) {
-      return "ذاكرتي الدائمة فارغة حاليًا.";
+
+        container.textContent =
+            "الذاكرة فارغة.";
+
+        return;
     }
 
-    return "هذه المعلومات التي أتذكرها:\n" +
-      memories.map(m => `• ${m.text}`).join("\n");
-  },
-
-  handleStatus() {
-    const s = SelfModel.state;
-    const goal = GoalSystem.current();
-
-    return [
-      `النظام: يعمل`,
-      `البيئة: ${WorldModel.state.environment}`,
-      `الحالة المعرفية: ${s.mode.toLowerCase()}`,
-      `الإدراك الداخلي: ${Math.round(s.awareness * 100)}%`,
-      `الانتباه: ${Math.round(s.attention * 100)}%`,
-      `الثقة: ${Math.round(s.confidence * 100)}%`,
-      `عدم اليقين: ${Math.round(s.uncertainty * 100)}%`,
-      `الهدف الحالي: ${goal ? goal.description : "لا يوجد"}`,
-      `المهمة الحالية: ${s.currentAction}`
-    ].join("\n");
-  },
-
-  handleGoal(text) {
-    const description = text
-      .replace(/^\s*(جهزني|عايز|أريد|اريد)\s*/i, "")
-      .replace(/^\s*(لمذاكرة|لمذاكره)\s*/i, "مذاكرة ")
-      .trim() || "مهمة جديدة";
-
-    const goal = GoalSystem.setGoal(description);
-
-    const planResult = Planner.generate(goal);
-
-    SelfModel.update({
-      mode: "PLANNING",
-      currentThought: `تم اختيار ${planResult.selected.title}`,
-      awareness: 0.91,
-      attention: 0.93,
-      confidence: 0.91,
-      uncertainty: 0.09
-    });
-
-    UI.plan.textContent =
-      `${planResult.selected.title}: ${planResult.selected.steps.join(" → ")}`;
-
-    const action = {
-      name: "focus_mode"
-    };
-
-    const result = ToolEngine.execute(action);
-    const observation = ObservationEngine.verify(result);
-
-    ReflectionEngine.reflect({
-      intent: Intent.GOAL,
-      goal: goal.description,
-      action: action.name,
-      result: observation,
-      lesson: observation.success
-        ? "الخطة الحالية مناسبة كبداية."
-        : "التنفيذ يحتاج إلى إعادة تخطيط."
-    });
-
-    if (observation.success) {
-      GoalSystem.complete(goal);
-      SelfModel.update({
-        mode: "COMPLETED",
-        currentAction: "لا يوجد",
-        currentThought: "اكتملت المهمة الحالية.",
-        confidence: 0.96,
-        uncertainty: 0.04
-      });
-
-      return [
-        `تم تحديد الهدف: ${goal.description}`,
-        `حللت الهدف وقارنت ${planResult.plans.length} خطط.`,
-        `الخطة المختارة: ${planResult.selected.title}.`,
-        "تم تجهيز جلسة التركيز. لنبدأ."
-      ].join("\n");
-    }
-
-    return [
-      `تم تحديد الهدف: ${goal.description}`,
-      "الخطة جاهزة، لكن التنفيذ لم يكتمل.",
-      "سأحتاج إلى إعادة التخطيط في المرحلة التالية."
-    ].join("\n");
-  },
-
-  handleSettings() {
-    return Personalization.describe();
-  },
-
-  handlePersonality(text) {
-    const n = normalizeArabic(text);
-
-    if (containsAny(n, ["مختصر", "باختصار"])) {
-      Personalization.set("communication.concise", true);
-      Personalization.set("communication.verbosity", 0.25);
-      return "تم. من الآن سأجعل ردودي أكثر اختصارًا.";
-    }
-
-    if (containsAny(n, ["رسمي", "بشكل رسمي"])) {
-      Personalization.set("communication.formality", 0.95);
-      Personalization.set("communication.tone", "formal");
-      return "تم تعديل أسلوب التواصل إلى أسلوب أكثر رسمية، وسيظل محفوظًا.";
-    }
-
-    if (containsAny(n, ["هادي", "هادئ", "هدوء"])) {
-      Personalization.set("communication.tone", "calm");
-      return "تم. سأحافظ على نبرة أكثر هدوءًا.";
-    }
-
-    if (containsAny(n, ["اهزر", "هزار", "نكات", "نكته"])) {
-      Personalization.set("communication.humor", 0.70);
-      return "تم رفع مستوى الفكاهة قليلًا. لكن سأحاول ألا أحول كل اجتماع إلى عرض كوميدي.";
-    }
-
-    return "أستطيع تعديل النبرة، الرسمية، الاختصار، الفكاهة، وطريقة التواصل وحفظ التغييرات.";
-  },
-
-  handleBehavior(text) {
-    const n = normalizeArabic(text);
-
-    if (containsAny(n, ["اسالني", "اسألني", "مش متاكد", "غير متاكد", "عدم اليقين"])) {
-      Personalization.set("behavior.askWhenUncertain", true);
-      return "تم. عندما يكون عدم اليقين مرتفعًا سأفضّل طلب التوضيح بدل الافتراض.";
-    }
-
-    if (containsAny(n, ["ثلاث خطط", "3 خطط", "ثلاثه خطط", "قارن 3 خطط", "قارن ثلاث خطط"])) {
-      Personalization.set("behavior.comparePlans", true);
-      Personalization.set("behavior.planCount", 3);
-      return "تم. سأقارن ثلاث خطط قبل اختيار الأفضل عندما يكون ذلك مناسبًا.";
-    }
-
-    if (containsAny(n, ["راجع النتيجه", "راجع النتيجة", "تحقق من النتيجه", "تحقق من النتيجة"])) {
-      Personalization.set("behavior.verifyActions", true);
-      return "تم. سأتحقق من نتيجة الأفعال بدل افتراض نجاحها.";
-    }
-
-    if (containsAny(n, ["بادر", "مبادر", "اقترح من نفسك"])) {
-      Personalization.set("behavior.proactive", true);
-      return "تم تفعيل السلوك الاستباقي ضمن الحدود المتاحة.";
-    }
-
-    return "تم استلام طلب تعديل السلوك. أخبرني بالقاعدة التي تريدها وسأحولها إلى إعداد محفوظ.";
-  },
-
-  handleVoice(text) {
-    const n = normalizeArabic(text);
-
-    if (containsAny(n, ["ابطا", "أبطأ", "بطئ", "ببطء"])) {
-      const newRate = 0.78;
-      Personalization.set("voice.rate", newRate);
-      return "تم إبطاء سرعة صوتي، وسيظل الإعداد محفوظًا.";
-    }
-
-    if (containsAny(n, ["اسرع", "أسرع"])) {
-      Personalization.set("voice.rate", 1.12);
-      return "تم رفع سرعة صوتي قليلًا، وسيظل الإعداد محفوظًا.";
-    }
-
-    if (containsAny(n, ["ارفع الصوت", "أعلى"])) {
-      Personalization.set("voice.volume", 1);
-      return "تم ضبط مستوى الصوت إلى الحد الأعلى المتاح للمحرك.";
-    }
-
-    return "إعدادات الصوت الحالية محفوظة، ويمكنني تعديل السرعة واللغة وخصائص الصوت التي يدعمها المتصفح.";
-  },
-
-  handleGreeting() {
-    return "صباح الخير يا سيدي. نظام J.A.R.V.I.S Cognitive OS يعمل. الإدراك والذاكرة والأهداف والتخطيط والتنفيذ جاهزة للمرحلة الأولى.";
-  },
-
-  handleHelp() {
-    return [
-      "في المرحلة الأولى أستطيع:",
-      "• حفظ واسترجاع الذكريات.",
-      "• إنشاء أهداف وخطط.",
-      "• مقارنة الخطط واختيار الأنسب.",
-      "• مراقبة نتيجة التنفيذ.",
-      "• تعديل بعض إعدادات شخصيتي وسلوكي.",
-      "• تعديل إعدادات الصوت وحفظها.",
-      "• عرض حالتي المعرفية الداخلية.",
-      "",
-      "الميكروفون والتحكم في Android والعمل في الخلفية سيتم بناؤها بعد تثبيت الـCore."
-    ].join("\n");
-  },
-
-  handleUnknown(text) {
-    SelfModel.update({
-      mode: "REFLECTING",
-      currentThought: "النية غير مؤكدة؛ أحتاج إلى سياق إضافي.",
-      confidence: 0.42,
-      uncertainty: 0.58
-    });
-
-    if (Personalization.profile.behavior.askWhenUncertain) {
-      return "فهمت طلبك جزئيًا، لكنني غير واثق من الإجراء المقصود. وضّح لي ماذا تريد أن أفعل بالضبط.";
-    }
-
-    return "فهمت أن هناك طلبًا، لكنني أحتاج إلى مزيد من التفاصيل.";
-  }
-};
-
-/* =========================================================
-   UI STATE
-========================================================= */
-
-function renderBar(valueEl, barEl, value) {
-  const pct = Math.round(clamp(value) * 100);
-  valueEl.textContent = `${pct}%`;
-  barEl.style.width = `${pct}%`;
+    container.innerHTML =
+        memories
+            .slice(-10)
+            .reverse()
+            .map(
+                m =>
+                    `<div>• ${
+                        escapeHTML(m.text)
+                    }</div>`
+            )
+            .join("");
 }
 
-function renderCognitiveState() {
-  const s = SelfModel.state;
-  const p = Personalization.profile;
 
-  UI.system.textContent = "ONLINE";
-  UI.mode.textContent = s.mode;
-  UI.goal.textContent = GoalSystem.current()?.description || "لا يوجد";
-  UI.thought.textContent = s.currentThought;
-  UI.action.textContent = s.currentAction;
-  UI.behavior.textContent =
-    `${p.communication.tone} • ${p.communication.concise ? "مختصر" : "متوازن"} • ` +
-    `${p.behavior.proactive ? "استباقي" : "تفاعلي"}`;
+function renderPlan() {
 
-  renderBar(UI.awareness, UI.awarenessBar, s.awareness);
-  renderBar(UI.attention, UI.attentionBar, s.attention);
-  renderBar(UI.confidence, UI.confidenceBar, s.confidence);
-  renderBar(UI.uncertainty, UI.uncertaintyBar, s.uncertainty);
+    const container =
+        $("plan");
+
+    if (!container) return;
+
+    const plan =
+        JARVIS.state.plan;
+
+    if (!plan) {
+
+        container.textContent =
+            "لا توجد خطة.";
+
+        return;
+    }
+
+    container.innerHTML = `
+
+        <div>
+            <b>الهدف:</b>
+            ${escapeHTML(plan.goal)}
+        </div>
+
+        <div>
+            <b>الخطة المختارة:</b>
+            ${escapeHTML(
+                plan.selected.name
+            )}
+        </div>
+
+        <div>
+            <b>السبب:</b>
+            ${escapeHTML(plan.reason)}
+        </div>
+
+        <hr>
+
+        ${plan.compared
+            .map(
+                p =>
+                    `<div>
+                        ${escapeHTML(p.name)}
+                        —
+                        ${p.score}
+                    </div>`
+            )
+            .join("")}
+
+        <hr>
+
+        ${plan.selected.steps
+            .map(
+                (step, i) =>
+                    `<div>
+                        ${i + 1}.
+                        ${escapeHTML(step)}
+                    </div>`
+            )
+            .join("")}
+    `;
 }
 
-/* =========================================================
-   FORM
-========================================================= */
 
-UI.form.addEventListener("submit", async (event) => {
-  event.preventDefault();
+function renderSystem() {
 
-  const text = UI.input.value.trim();
-  if (!text) return;
+    const system =
+        JARVIS.state.system;
 
-  addMessage("YOU", text, "user");
-  UI.input.value = "";
+    if ($("systemState")) {
 
-  try {
-    const response = await CognitiveEngine.process(text);
-    jarvisSay(response, Personalization.profile.voice.enabled);
-  } catch (error) {
-    CognitiveLog.add("SYSTEM_ERROR", error.stack || error.message);
-    SelfModel.update({
-      mode: "ERROR",
-      confidence: 0.15,
-      uncertainty: 0.85,
-      currentThought: "حدث خطأ أثناء المعالجة."
-    });
-    jarvisSay("حدث خطأ داخلي أثناء معالجة الطلب. راجعت الحالة وسأحتاج إلى تصحيح المسار.");
-  } finally {
-    setTimeout(() => {
-      if (SelfModel.state.mode === "COMPLETED") {
-        SelfModel.update({ mode: "OBSERVING" });
-      }
-    }, 700);
-  }
-});
+        $("systemState")
+            .textContent =
+            system.status === "online"
+                ? "يعمل"
+                : "متوقف";
+    }
 
-/* =========================================================
-   INITIALIZATION
-========================================================= */
+    if ($("processing")) {
 
-function initialize() {
-  renderCognitiveState();
+        $("processing")
+            .textContent =
+            system.cognitiveState;
+    }
 
-  CognitiveLog.add("BOOT", "J.A.R.V.I.S Cognitive OS v1.0 initialized");
+    if ($("confidence")) {
 
-  addMessage(
-    "J.A.R.V.I.S",
-    "صباح الخير يا سيدي. نظام العقل V1.0 يعمل. الإدراك والذاكرة والأهداف والتخطيط والتنفيذ جاهزة.",
-    "jarvis"
-  );
+        $("confidence")
+            .textContent =
+            Math.round(
+                system.confidence * 100
+            ) + "%";
+    }
 
-  VoiceOutput.speak(
-    "صباح الخير يا سيدي. نظام العقل يعمل."
-  );
+    if ($("goal")) {
+
+        $("goal")
+            .textContent =
+            JARVIS.state.goal?.title
+            || "لا يوجد";
+    }
 }
 
-initialize();
+
+function renderAll() {
+
+    renderMessages();
+
+    renderAnalysis();
+
+    renderMemory();
+
+    renderPlan();
+
+    renderSystem();
+}
+
+
+function escapeHTML(text) {
+
+    return String(text || "")
+        .replace(
+            /[&<>"']/g,
+            char => ({
+
+                "&": "&amp;",
+
+                "<": "&lt;",
+
+                ">": "&gt;",
+
+                '"': "&quot;",
+
+                "'": "&#039;"
+
+            }[char])
+        );
+}
+
+
+/*
+=========================================================
+SEND MESSAGE
+=========================================================
+*/
+
+async function sendMessage() {
+
+    const input =
+        $("userInput");
+
+    if (!input) return;
+
+    const message =
+        input.value.trim();
+
+    if (!message) return;
+
+    input.value = "";
+
+    JARVIS.conversation
+        .addUser(message);
+
+    renderAll();
+
+    const reply =
+        await JARVIS.process(
+            message
+        );
+
+    renderAll();
+
+    speak(reply);
+}
+
+
+/*
+=========================================================
+VOICE
+=========================================================
+*/
+
+function speak(text) {
+
+    if (
+        !JARVIS.state.settings
+            .voiceEnabled
+    ) return;
+
+    if (
+        !("speechSynthesis" in window)
+    ) return;
+
+    speechSynthesis.cancel();
+
+    const utterance =
+        new SpeechSynthesisUtterance(
+            text
+        );
+
+    utterance.lang =
+        "ar-EG";
+
+    utterance.rate =
+        JARVIS.state.settings
+            .voiceRate;
+
+    speechSynthesis.speak(
+        utterance
+    );
+}
+
+
+/*
+=========================================================
+BOOT
+=========================================================
+*/
+
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+
+        JARVIS.storage.load();
+
+        const form =
+            $("chatForm");
+
+        if (form) {
+
+            form.addEventListener(
+                "submit",
+                event => {
+
+                    event.preventDefault();
+
+                    sendMessage();
+                }
+            );
+        }
+
+        const voiceButton =
+            $("voiceBtn");
+
+        if (voiceButton) {
+
+            voiceButton.addEventListener(
+                "click",
+                () => {
+
+                    JARVIS.state
+                        .settings
+                        .voiceEnabled =
+                        !JARVIS.state
+                            .settings
+                            .voiceEnabled;
+
+                    JARVIS.storage.save();
+                }
+            );
+        }
+
+        renderAll();
+
+        console.log(
+            "J.A.R.V.I.S COGNITIVE OS v2 ONLINE"
+        );
+    }
+);
