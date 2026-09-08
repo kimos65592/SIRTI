@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#05070b">
+  <title>J.A.R.V.I.S — Cognitive OS v1.0</title>
+  <style>
+    * { box-sizing: border-box; }
+    :root {
+      --bg: #05070b;
+      --panel: #0a0f17;
+      --panel2: #0d141f;
+      --line: rgba(120,190,255,.16);
+      --text: #e8f4ff;
+      --muted: #7e93a8;
+      --accent: #63c7ff;
+      --good: #68e0a1;
+      --warn: #ffd166;
+      --danger: #ff6b7a;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 80% 0%, rgba(40,130,190,.12), transparent 35%),
+        radial-gradient(circle at 10% 100%, rgba(60,90,180,.08), transparent 35%),
+        var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", Tahoma, Arial, sans-serif;
+    }
+    .app { width: min(1400px, 96vw); margin: auto; padding: 18px 0; }
+    header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 16px 20px; border: 1px solid var(--line);
+      background: rgba(8,13,21,.86); backdrop-filter: blur(12px);
+      border-radius: 18px; margin-bottom: 16px;
+    }
+    .brand { display:flex; gap:12px; align-items:center; }
+    .orb {
+      width: 42px; height:42px; border-radius:50%;
+      border: 1px solid rgba(99,199,255,.55);
+      box-shadow: 0 0 25px rgba(99,199,255,.18), inset 0 0 18px rgba(99,199,255,.12);
+      position:relative;
+    }
+    .orb:after {
+      content:""; position:absolute; inset:9px; border-radius:50%;
+      border:1px solid rgba(99,199,255,.55);
+    }
+    h1 { font-size: 18px; margin: 0; letter-spacing: .12em; direction:ltr; }
+    .subtitle { color: var(--muted); font-size: 12px; margin-top: 3px; }
+    .status { color: var(--good); font-size: 12px; direction:ltr; }
+    .layout { display:grid; grid-template-columns: minmax(0, 1fr) 360px; gap:16px; }
+    .panel {
+      background: linear-gradient(180deg, rgba(12,18,28,.94), rgba(7,11,18,.94));
+      border:1px solid var(--line); border-radius:18px; overflow:hidden;
+    }
+    .panel-title {
+      padding:13px 16px; border-bottom:1px solid var(--line);
+      color:#bcd8ef; font-size:13px; letter-spacing:.06em;
+    }
+    #chat {
+      height: 64vh; min-height: 460px; overflow:auto; padding:18px;
+      display:flex; flex-direction:column; gap:10px;
+    }
+    .msg { max-width:86%; padding:11px 14px; border-radius:14px; line-height:1.65; white-space:pre-wrap; }
+    .user { align-self:flex-start; background:#122030; border:1px solid rgba(99,199,255,.13); }
+    .jarvis { align-self:flex-end; background:#0d171d; border:1px solid rgba(104,224,161,.14); }
+    .who { font-size:10px; opacity:.55; margin-bottom:3px; }
+    form { display:flex; gap:8px; padding:12px; border-top:1px solid var(--line); }
+    input {
+      flex:1; min-width:0; padding:13px 14px; border-radius:12px;
+      border:1px solid var(--line); background:#070b12; color:var(--text);
+      outline:none; font-size:15px;
+    }
+    input:focus { border-color:rgba(99,199,255,.5); }
+    button {
+      border:1px solid rgba(99,199,255,.32); background:#0d1a26; color:#dff4ff;
+      border-radius:12px; padding:0 18px; cursor:pointer; font-weight:700;
+    }
+    button:hover { background:#122638; }
+    .cards { padding:14px; display:grid; gap:10px; }
+    .card { background:rgba(255,255,255,.018); border:1px solid var(--line); border-radius:12px; padding:11px; }
+    .label { color:var(--muted); font-size:11px; }
+    .value { margin-top:5px; font-size:13px; }
+    .bar { height:6px; background:#111b26; border-radius:99px; overflow:hidden; margin-top:8px; }
+    .fill { height:100%; width:0%; background:var(--accent); transition:width .3s; }
+    .mono { direction:ltr; text-align:left; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .log { max-height:180px; overflow:auto; font-size:10px; line-height:1.7; color:#91a7bb; }
+    .hint { padding: 10px 14px 14px; color:var(--muted); font-size:11px; line-height:1.7; }
+    @media(max-width:900px) {
+      .layout { grid-template-columns:1fr; }
+      #chat { height:58vh; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="orb"></div>
+      <div>
+        <h1>J.A.R.V.I.S — COGNITIVE OS</h1>
+        <div class="subtitle">Phase 1 • Cognitive Core • Web Brain Lab</div>
+      </div>
+    </div>
+    <div class="status">● ONLINE</div>
+  </header>
+
+  <div class="layout">
+    <section class="panel">
+      <div class="panel-title">CONVERSATION</div>
+      <div id="chat"></div>
+      <form id="command-form" autocomplete="off">
+        <input id="input" type="text" placeholder="اكتب أمرك إلى J.A.R.V.I.S..." />
+        <button type="submit">إرسال</button>
+      </form>
+    </section>
+
+    <aside class="panel">
+      <div class="panel-title">COGNITIVE STATE</div>
+      <div class="cards">
+        <div class="card">
+          <div class="label">SYSTEM</div>
+          <div id="system-state" class="value">ONLINE</div>
+        </div>
+        <div class="card">
+          <div class="label">COGNITIVE MODE</div>
+          <div id="mode-state" class="value">OBSERVING</div>
+        </div>
+        <div class="card">
+          <div class="label">AWARENESS</div>
+          <div id="awareness-value" class="value">0%</div>
+          <div class="bar"><div id="awareness-bar" class="fill"></div></div>
+        </div>
+        <div class="card">
+          <div class="label">ATTENTION</div>
+          <div id="attention-value" class="value">0%</div>
+          <div class="bar"><div id="attention-bar" class="fill"></div></div>
+        </div>
+        <div class="card">
+          <div class="label">CONFIDENCE</div>
+          <div id="confidence-value" class="value">0%</div>
+          <div class="bar"><div id="confidence-bar" class="fill"></div></div>
+        </div>
+        <div class="card">
+          <div class="label">UNCERTAINTY</div>
+          <div id="uncertainty-value" class="value">0%</div>
+          <div class="bar"><div id="uncertainty-bar" class="fill"></div></div>
+        </div>
+        <div class="card">
+          <div class="label">CURRENT GOAL</div>
+          <div id="goal-state" class="value">لا يوجد</div>
+        </div>
+        <div class="card">
+          <div class="label">CURRENT THOUGHT</div>
+          <div id="thought-state" class="value">في انتظار الإدراك...</div>
+        </div>
+        <div class="card">
+          <div class="label">ACTIVE PLAN</div>
+          <div id="plan-state" class="value">لا توجد خطة</div>
+        </div>
+        <div class="card">
+          <div class="label">LAST ACTION</div>
+          <div id="action-state" class="value">لا يوجد</div>
+        </div>
+        <div class="card">
+          <div class="label">PERSISTENT BEHAVIOR</div>
+          <div id="behavior-state" class="value">الافتراضي</div>
+        </div>
+        <div class="card">
+          <div class="label">COGNITIVE LOG</div>
+          <div id="cognitive-log" class="log mono"></div>
+        </div>
+      </div>
+      <div class="hint">
+        المرحلة الأولى: الإدخال منك نص، والاستجابة من J.A.R.V.I.S نص + صوت.
+        الميكروفون والتحكم الكامل في Android سيأتيان بعد تثبيت العقل على الويب.
+      </div>
+    </aside>
+  </div>
+</div>
+<script src="./app.js"></script>
+</body>
+</html>
