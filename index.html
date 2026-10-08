@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0f18">
+  <meta name="description" content="Study JARVIS - مساعدك التعليمي لتنظيم المذاكرة وشرح المنهج وحل الأسئلة.">
+  <title>Study JARVIS</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">STUDY CORE</p>
+        <h1>Study JARVIS</h1>
+        <p id="statusLine" class="status-line">جاهز للدراسة.</p>
+      </div>
+      <button id="settingsBtn" class="icon-btn" type="button" aria-label="الإعدادات">⚙️</button>
+    </header>
+
+    <nav class="tabs" aria-label="أقسام التطبيق">
+      <button class="tab active" data-section="home" type="button">الرئيسية</button>
+      <button class="tab" data-section="chat" type="button">المدرس</button>
+      <button class="tab" data-section="schedule" type="button">الجدول</button>
+      <button class="tab" data-section="progress" type="button">التقدم</button>
+    </nav>
+
+    <main>
+      <section id="home" class="section active">
+        <div class="hero card">
+          <div class="hero-copy">
+            <span class="badge">🧑‍🏫 مدرسك الرقمي</span>
+            <h2>اسأل، اتكلم، افهم.</h2>
+            <p>نظم يومك، اسأل عن المنهج، وتمرّن على الحل خطوة بخطوة بدل حفظ الإجابة وخلاص.</p>
+            <div class="hero-actions">
+              <button id="startStudyBtn" class="primary-btn" type="button">ابدأ جلسة مذاكرة</button>
+              <button id="askBtn" class="secondary-btn" type="button">اسأل المدرس</button>
+            </div>
+          </div>
+          <div class="orb" aria-hidden="true"><span>J</span></div>
+        </div>
+
+        <div class="grid-3">
+          <article class="stat card">
+            <span>📅 جلسات اليوم</span>
+            <strong id="todaySessions">0</strong>
+            <small>جلسة مجدولة</small>
+          </article>
+          <article class="stat card">
+            <span>⏱️ وقت اليوم</span>
+            <strong id="todayMinutes">0 د</strong>
+            <small>إجمالي الدقائق</small>
+          </article>
+          <article class="stat card">
+            <span>🎯 الأولوية</span>
+            <strong id="prioritySubject">—</strong>
+            <small>أقرب مادة في الجدول</small>
+          </article>
+        </div>
+
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">TODAY</p>
+            <h3>خطة اليوم</h3>
+          </div>
+          <button id="goScheduleBtn" class="text-btn" type="button">إدارة الجدول</button>
+        </div>
+        <div id="todayPlan" class="list-stack"></div>
+      </section>
+
+      <section id="chat" class="section">
+        <div class="section-head compact">
+          <div>
+            <p class="eyebrow">TEACHER MODE</p>
+            <h2>المدرس الذكي</h2>
+            <p>جرّب السؤال كتابة أو بالكلام. في التدريب نبدأ بتلميح قبل الحل.</p>
+          </div>
+          <button id="clearChatBtn" class="secondary-btn" type="button">مسح</button>
+        </div>
+
+        <div class="mode-toggle" role="group" aria-label="وضع التعليم">
+          <button class="mode-btn active" data-mode="explain" type="button">شرح</button>
+          <button class="mode-btn" data-mode="practice" type="button">تدريب</button>
+          <button class="mode-btn" data-mode="solve" type="button">حل سؤال</button>
+        </div>
+
+        <div id="chatMessages" class="chat-box" aria-live="polite"></div>
+
+        <div class="composer card">
+          <textarea id="promptInput" rows="3" placeholder="مثال: اشرحلي قانون نيوتن الثاني بطريقة بسيطة..."></textarea>
+          <div class="composer-row">
+            <button id="micBtn" class="voice-btn" type="button" aria-label="التحدث صوتيًا">🎤 تحدث</button>
+            <span id="voiceState" class="helper">الصوت يعتمد على دعم المتصفح.</span>
+            <button id="sendBtn" class="primary-btn" type="button">إرسال</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="schedule" class="section">
+        <div class="section-head compact">
+          <div>
+            <p class="eyebrow">STUDY PLAN</p>
+            <h2>جدول المذاكرة</h2>
+            <p>أضف الجلسات واحفظها على الجهاز.</p>
+          </div>
+        </div>
+
+        <form id="scheduleForm" class="card form-grid">
+          <label>المادة
+            <select id="subjectInput"></select>
+          </label>
+          <label>التاريخ
+            <input id="dateInput" type="date" required>
+          </label>
+          <label>الوقت
+            <input id="timeInput" type="time" required>
+          </label>
+          <label>المدة بالدقائق
+            <input id="durationInput" type="number" min="15" max="480" step="5" value="60" required>
+          </label>
+          <label class="full">عنوان الجلسة
+            <input id="titleInput" type="text" maxlength="80" placeholder="مثال: حل مسائل على الاستاتيكا" required>
+          </label>
+          <button class="primary-btn full" type="submit">إضافة للجداول</button>
+        </form>
+
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">UPCOMING</p>
+            <h3>الجلسات القادمة</h3>
+          </div>
+        </div>
+        <div id="scheduleList" class="list-stack"></div>
+      </section>
+
+      <section id="progress" class="section">
+        <div class="section-head compact">
+          <div>
+            <p class="eyebrow">PROGRESS</p>
+            <h2>متابعة المستوى</h2>
+            <p>هذه بداية بسيطة. لاحقًا سنضيف نقاط ضعف وأخطاء متكررة واختبارات تلقائية.</p>
+          </div>
+        </div>
+        <div id="subjectProgress" class="progress-grid"></div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="settingsDialog" class="dialog">
+    <form method="dialog" id="settingsForm" class="dialog-card">
+      <div class="section-head compact">
+        <div>
+          <p class="eyebrow">AI SETTINGS</p>
+          <h2>إعدادات Hugging Face</h2>
+        </div>
+        <button class="icon-btn" value="cancel" type="submit" aria-label="إغلاق">✕</button>
+      </div>
+      <label>HF Token
+        <input id="hfTokenInput" type="password" autocomplete="off" placeholder="hf_...">
+      </label>
+      <label>الموديل
+        <input id="modelInput" type="text" value="Qwen/Qwen3-4B-Thinking-2507:fastest" autocomplete="off">
+      </label>
+      <label>اسم الطالب
+        <input id="studentNameInput" type="text" value="أحمد" maxlength="40">
+      </label>
+      <p class="warning">التوكن يُحفظ محليًا في المتصفح فقط. لا تضع توكنًا عامًّا داخل ملفات GitHub Pages.</p>
+      <div class="dialog-actions">
+        <button class="secondary-btn" value="cancel" type="submit">إلغاء</button>
+        <button id="saveSettingsBtn" class="primary-btn" value="default" type="submit">حفظ</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="data/subjects.js"></script>
+  <script src="data/schedule.js"></script>
+  <script src="data/curriculum.js"></script>
+  <script src="ai/huggingface.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
